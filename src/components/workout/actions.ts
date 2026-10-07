@@ -42,7 +42,8 @@ export function toggleSetDone(weId: string, setId: string): ToggleResult {
     haptic('success');
   }
 
-  if (settings.autoStartRest) {
+  // No rest timer when back-filling a past session.
+  if (settings.autoStartRest && !workout.plannedEnd) {
     useRestTimer.getState().start(we.restSeconds ?? settings.defaultRest, name);
   }
   return result;
@@ -63,7 +64,9 @@ export function deleteSet(weId: string, setId: string) {
 }
 
 /** Starts a workout, confirming before replacing one in progress. */
-export async function startWorkout(opts: { routine?: Routine; template?: Workout } = {}): Promise<boolean> {
+export async function startWorkout(
+  opts: { routine?: Routine; template?: Workout; startedAt?: number; plannedEnd?: number } = {},
+): Promise<boolean> {
   const active = useActiveWorkout.getState().workout;
   if (active) {
     const ok = await confirm({

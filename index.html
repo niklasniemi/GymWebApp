@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
     <title>Forge — Workout Tracker</title>
     <meta
       name="description"
@@ -28,6 +31,7 @@
           var root = document.documentElement;
           root.classList.toggle('dark', dark);
           root.dataset.glass = s.glass === false ? 'off' : 'on';
+          root.dataset.accent = s.accent || 'blue';
           root.style.colorScheme = dark ? 'dark' : 'light';
         } catch (e) {}
       })();

@@ -1,6 +1,13 @@
 import { memo } from 'react';
 import { motion } from 'framer-motion';
-import { Calculator, ChartNoAxesCombined, ClipboardList, Dumbbell, Settings, type LucideIcon } from 'lucide-react';
+import {
+  Calculator,
+  ChartNoAxesCombined,
+  CircleUserRound,
+  ClipboardList,
+  Dumbbell,
+  type LucideIcon,
+} from 'lucide-react';
 import { haptic } from '../../lib/haptics';
 import { cn } from '../../lib/utils';
 import { useActiveWorkout } from '../../store/workout';
@@ -11,7 +18,7 @@ const ITEMS: { tab: Tab; label: string; icon: LucideIcon }[] = [
   { tab: 'routines', label: 'Routines', icon: ClipboardList },
   { tab: 'analytics', label: 'Analytics', icon: ChartNoAxesCombined },
   { tab: 'utilities', label: 'Utilities', icon: Calculator },
-  { tab: 'settings', label: 'Settings', icon: Settings },
+  { tab: 'profile', label: 'Profile', icon: CircleUserRound },
 ];
 
 /** Floating bottom tab bar on phones; vertical rail on large screens. */

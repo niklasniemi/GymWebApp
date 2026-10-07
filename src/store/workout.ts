@@ -18,6 +18,10 @@ interface StartOptions {
   /** Repeat the structure of a past workout. */
   template?: Workout;
   name?: string;
+  /** Back-fill a forgotten session: when it really started… */
+  startedAt?: number;
+  /** …and ended. Marks the session as a past workout. */
+  plannedEnd?: number;
 }
 
 interface ActiveWorkoutState {
@@ -40,6 +44,8 @@ interface ActiveWorkoutState {
   insertSet: (weId: string, set: WorkoutSet, index: number) => void;
   toggleSet: (weId: string, setId: string) => ToggleResult;
   /** Persists completed sets to history and clears the session. */
+  /** Adjust the start (and, for past workouts, the end) time. */
+  setTimes: (startedAt: number, plannedEnd?: number) => void;
   finish: () => Workout | null;
   discard: () => void;
 }
@@ -62,9 +68,37 @@ function history() {
   return getHistoryIndex(useData.getState().workouts);
 }
 
+const priorCache = new WeakMap<Workout[], Map<number, ReturnType<typeof getHistoryIndex>>>();
+
+/**
+ * History as of a moment: for back-filled sessions, "previous" values and
+ * PRs must only consider workouts that happened before it.
+ */
+function historyBefore(t: number | undefined) {
+  const workouts = useData.getState().workouts;
+  if (t === undefined) return getHistoryIndex(workouts);
+  let byTime = priorCache.get(workouts);
+  if (!byTime) {
+    byTime = new Map();
+    priorCache.set(workouts, byTime);
+  }
+  let index = byTime.get(t);
+  if (!index) {
+    index = getHistoryIndex(workouts.filter((w) => w.startedAt < t));
+    byTime.set(t, index);
+  }
+  return index;
+}
+
+/** Index to evaluate an in-progress workout against. */
+const historyFor = (w: Workout | null | undefined) => (w?.plannedEnd ? historyBefore(w.startedAt) : history());
+
 /** New exercise entry, mirroring the previous session's set structure. */
-function createEntry(exerciseId: string, opts: { sets?: number; reps?: string; rest?: number } = {}): WorkoutExercise {
-  const last = lastSession(history(), exerciseId);
+function createEntry(
+  exerciseId: string,
+  opts: { sets?: number; reps?: string; rest?: number; before?: number } = {},
+): WorkoutExercise {
+  const last = lastSession(historyBefore(opts.before), exerciseId);
   let sets: WorkoutSet[];
   if (opts.sets) {
     sets = Array.from({ length: opts.sets }, () => newSet());
@@ -101,13 +135,15 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
         workout: null,
 
         start: (opts = {}) => {
-          const now = Date.now();
+          const now = opts.startedAt ?? Date.now();
+          const before = opts.plannedEnd ? now : undefined;
           let exercises: WorkoutExercise[] = [];
           if (opts.routine) {
             exercises = opts.routine.exercises.map((re) =>
-              createEntry(re.exerciseId, { sets: re.sets, reps: re.reps, rest: re.restSeconds }),
+              createEntry(re.exerciseId, { sets: re.sets, reps: re.reps, rest: re.restSeconds, before }),
             );
-            useData.getState().saveRoutine({ ...opts.routine, lastUsedAt: now });
+            const lastUsed = Math.max(opts.routine.lastUsedAt ?? 0, now);
+            useData.getState().saveRoutine({ ...opts.routine, lastUsedAt: lastUsed });
           } else if (opts.template) {
             exercises = opts.template.exercises.map((we) => ({
               id: uid(),
@@ -123,9 +159,16 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
               name: opts.name ?? opts.routine?.name ?? opts.template?.name ?? workoutNameForTime(now),
               routineId: opts.routine?.id ?? opts.template?.routineId,
               startedAt: now,
+              plannedEnd: opts.plannedEnd,
               exercises,
             },
           });
+        },
+
+        setTimes: (startedAt, plannedEnd) => {
+          const w = get().workout;
+          if (!w) return;
+          set({ workout: { ...w, startedAt, plannedEnd: w.plannedEnd ? (plannedEnd ?? w.plannedEnd) : undefined } });
         },
 
         rename: (name) => {
@@ -141,7 +184,8 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
         addExercises: (ids) => {
           const w = get().workout;
           if (!w) return;
-          set({ workout: { ...w, exercises: [...w.exercises, ...ids.map((id) => createEntry(id))] } });
+          const before = w.plannedEnd ? w.startedAt : undefined;
+          set({ workout: { ...w, exercises: [...w.exercises, ...ids.map((id) => createEntry(id, { before }))] } });
         },
 
         removeExercise: (weId) => {
@@ -229,7 +273,8 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
           // Auto-fill blanks from last session so "just tap ✓" logs a repeat.
           const i = we.sets.indexOf(current);
           const prev =
-            matchPreviousSets(we.sets, lastSession(history(), we.exerciseId)?.sets)[i] ?? inSessionHints(we.sets)[i];
+            matchPreviousSets(we.sets, lastSession(historyFor(w), we.exerciseId)?.sets)[i] ??
+            inSessionHints(we.sets)[i];
           const weight = current.weight ?? prev?.weight ?? null;
           const reps = current.reps ?? prev?.reps ?? null;
           if (reps === null || reps <= 0) return { status: 'missing-reps' };
@@ -242,7 +287,7 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
         finish: () => {
           const w = get().workout;
           if (!w) return null;
-          const prs = computeWorkoutPRs(w, history());
+          const prs = computeWorkoutPRs(w, historyFor(w));
           const exercises = w.exercises
             .map((we) => ({
               ...we,
@@ -255,7 +300,8 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
             }))
             .filter((we) => we.sets.length > 0);
           if (!exercises.length) return null;
-          const finished: Workout = { ...w, exercises, endedAt: Date.now() };
+          const { plannedEnd, ...rest } = w;
+          const finished: Workout = { ...rest, exercises, endedAt: plannedEnd ?? Date.now() };
           useData.getState().saveWorkout(finished);
           set({ workout: null });
           return finished;
@@ -277,7 +323,7 @@ const prCache = new WeakMap<Workout, { index: ReturnType<typeof history>; prs: M
 
 /** PR map for the active workout, computed once per workout revision. */
 export function getActivePRs(workout: Workout): Map<string, PRType[]> {
-  const index = history();
+  const index = historyFor(workout);
   const hit = prCache.get(workout);
   if (hit && hit.index === index) return hit.prs;
   const prs = computeWorkoutPRs(workout, index);

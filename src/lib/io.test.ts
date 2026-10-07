@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BUILTIN_EXERCISES } from '../data/exercises';
+import { DEFAULT_SETTINGS } from '../store/settings';
 import type { Exercise, Workout } from '../types';
 import { createBackup, ImportError, parseBackup, parseCSV, workoutsFromCSV, workoutsToCSV } from './io';
 
@@ -93,18 +94,7 @@ describe('JSON backup', () => {
   it('round-trips and sanitizes', () => {
     const backup = createBackup(
       { exercises: [custom], routines: [], workouts: [workout], measurements: [] },
-      {
-        theme: 'dark',
-        glass: true,
-        autoPowerSaver: true,
-        unit: 'kg',
-        defaultRest: 90,
-        autoStartRest: true,
-        effortMetric: 'rpe',
-        haptics: true,
-        sound: true,
-        keepAwake: true,
-      },
+      { ...DEFAULT_SETTINGS, theme: 'dark' },
     );
     const { data, settings } = parseBackup(JSON.stringify(backup));
     expect(data.workouts[0]).toEqual(workout);

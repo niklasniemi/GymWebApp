@@ -3,9 +3,10 @@ import { MUSCLE_GROUPS } from '../types';
 import { addDays, formatShortDate, startOfDay, startOfWeek } from './format';
 import { workoutVolume } from './history';
 
-export type RangeKey = '4w' | '12w' | '6m' | '1y' | 'all';
+export type RangeKey = '1w' | '4w' | '12w' | '6m' | '1y' | 'all';
 
 export const RANGES: { value: RangeKey; label: string; days: number | null }[] = [
+  { value: '1w', label: '1W', days: 7 },
   { value: '4w', label: '4W', days: 28 },
   { value: '12w', label: '12W', days: 84 },
   { value: '6m', label: '6M', days: 182 },
@@ -30,38 +31,62 @@ export interface Bucket {
 }
 
 /** Volume per week (short ranges) or per month (long ranges), zero-filled. */
-export function volumeBuckets(workouts: Workout[], range: RangeKey, now = Date.now()): Bucket[] {
-  const monthly = range === '1y' || range === 'all';
-  const from = range === 'all' ? Math.min(now, ...workouts.map((w) => w.startedAt)) : rangeStart(range, now);
-  const buckets = new Map<number, number>();
+/** Bucket granularity for a range: days for 1W, weeks up to 6M, months beyond. */
+export const bucketUnit = (range: RangeKey): 'day' | 'week' | 'month' =>
+  range === '1w' ? 'day' : range === '1y' || range === 'all' ? 'month' : 'week';
 
+/** Zero-filled per-period totals of `value(workout)` for a range. */
+export function periodBuckets(
+  workouts: Workout[],
+  range: RangeKey,
+  value: (w: Workout) => number,
+  now = Date.now(),
+  reduce: 'sum' | 'mean' = 'sum',
+): Bucket[] {
+  const unit = bucketUnit(range);
+  const from = range === 'all' ? Math.min(now, ...workouts.map((w) => w.startedAt)) : rangeStart(range, now);
   const keyOf = (ts: number) => {
-    if (!monthly) return startOfWeek(ts);
+    if (unit === 'day') return startOfDay(ts);
+    if (unit === 'week') return startOfWeek(ts);
     const d = new Date(ts);
     return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
   };
+  const next = (t: number) => {
+    if (unit === 'day') return addDays(t, 1);
+    if (unit === 'week') return addDays(t, 7);
+    const d = new Date(t);
+    return new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime();
+  };
+  const sums = new Map<number, { total: number; n: number }>();
   // Zero-fill so gaps in training are visible.
-  for (let t = keyOf(from); t <= now;) {
-    buckets.set(t, 0);
-    if (monthly) {
-      const d = new Date(t);
-      t = new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime();
-    } else t = addDays(t, 7);
-  }
+  for (let t = keyOf(from); t <= now; t = next(t)) sums.set(t, { total: 0, n: 0 });
   for (const w of workouts) {
     if (w.startedAt < from) continue;
-    const k = keyOf(w.startedAt);
-    buckets.set(k, (buckets.get(k) ?? 0) + workoutVolume(w));
+    const b = sums.get(keyOf(w.startedAt)) ?? { total: 0, n: 0 };
+    b.total += value(w);
+    b.n++;
+    sums.set(keyOf(w.startedAt), b);
   }
-  return [...buckets.entries()]
+  return [...sums.entries()]
     .sort((a, b) => a[0] - b[0])
-    .map(([k, value]) => ({
+    .map(([k, b]) => ({
       key: String(k),
-      label: monthly
-        ? new Date(k).toLocaleDateString(undefined, { month: 'short', year: range === 'all' ? '2-digit' : undefined })
-        : formatShortDate(k),
-      value,
+      label:
+        unit === 'day'
+          ? new Date(k).toLocaleDateString(undefined, { weekday: 'short' })
+          : unit === 'month'
+            ? new Date(k).toLocaleDateString(undefined, {
+                month: 'short',
+                year: range === 'all' ? '2-digit' : undefined,
+              })
+            : formatShortDate(k),
+      value: reduce === 'mean' ? (b.n ? b.total / b.n : 0) : b.total,
     }));
+}
+
+/** Volume per day (1W), week, or month (1Y / All), zero-filled. */
+export function volumeBuckets(workouts: Workout[], range: RangeKey, now = Date.now()): Bucket[] {
+  return periodBuckets(workouts, range, workoutVolume, now);
 }
 
 export interface HeatCell {

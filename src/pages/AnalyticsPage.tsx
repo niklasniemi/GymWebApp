@@ -1,6 +1,15 @@
 import { memo, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
+  Crosshair,
+  Flame,
+  Medal,
+  Mountain,
+  PieChart,
+  Rocket,
+  Sunrise,
+  Target,
+  Timer,
   BarChart3,
   CalendarDays,
   ChartNoAxesCombined,
@@ -18,6 +27,17 @@ import { BodyTracker } from '../components/analytics/BodyTracker';
 import { PeriodBarChart } from '../components/analytics/charts';
 import { MusclesView } from '../components/analytics/MusclesView';
 import { StrengthView } from '../components/analytics/StrengthView';
+import {
+  GoalWeeksWidget,
+  LifetimeWidget,
+  MomentumHistoryWidget,
+  MostImprovedWidget,
+  MuscleTargetsWidget,
+  RecordsWidget,
+  RepRangesWidget,
+  SessionLengthWidget,
+  WhenYouTrainWidget,
+} from '../components/analytics/insightWidgets';
 import { Button } from '../components/ui/Button';
 import { Card, EmptyState, PageHeader, StatTile } from '../components/ui/primitives';
 import { Segmented } from '../components/ui/Segmented';
@@ -30,7 +50,7 @@ import {
   RecentPRsWidget,
 } from '../components/widgets/sharedWidgets';
 import { MUSCLE_LABELS } from '../data/exercises';
-import { inRange, muscleSplit, RANGES, volumeBuckets, type RangeKey } from '../lib/analytics';
+import { bucketUnit, inRange, muscleSplit, RANGES, rangeStart, volumeBuckets, type RangeKey } from '../lib/analytics';
 import { formatDuration } from '../lib/format';
 import { workoutPRCount, workoutVolume } from '../lib/history';
 import { formatNumber, formatVolume, toDisplayWeight } from '../lib/units';
@@ -88,13 +108,26 @@ export default function AnalyticsPage() {
   );
 }
 
-const OVERVIEW_DEFAULTS = ['stats', 'volume', 'frequency', 'keyLifts', 'prs'];
+const OVERVIEW_DEFAULTS = [
+  'stats',
+  'goalWeeks',
+  'volume',
+  'momentum',
+  'muscleTargets',
+  'improved',
+  'repRanges',
+  'weekdays',
+  'frequency',
+  'keyLifts',
+  'prs',
+];
 
 function Overview({ editing, onDone, focus }: { editing: boolean; onDone: () => void; focus?: string }) {
   const history = useHistoryIndex();
   const [range, setRange] = useState<RangeKey>('12w');
   const workouts = useMemo(() => inRange(history.sorted, range), [history, range]);
   const rangeLabel = RANGES.find((r) => r.value === range)?.label ?? '';
+  const from = useMemo(() => rangeStart(range), [range]);
 
   const widgets = useMemo<WidgetDef[]>(
     () => [
@@ -104,6 +137,69 @@ function Overview({ editing, onDone, focus }: { editing: boolean; onDone: () => 
         description: 'Workouts, volume, time and PRs',
         icon: Layers,
         render: () => <StatsWidget workouts={workouts} />,
+      },
+      {
+        id: 'goalWeeks',
+        title: 'Weekly goal',
+        description: 'Workouts per week vs your goal',
+        icon: Target,
+        render: () => <GoalWeeksWidget />,
+      },
+      {
+        id: 'momentum',
+        title: 'Momentum history',
+        description: 'Your training fire over 60 days',
+        icon: Flame,
+        render: () => <MomentumHistoryWidget />,
+      },
+      {
+        id: 'muscleTargets',
+        title: 'Weekly sets per muscle',
+        description: 'Each muscle vs the 10–20 sets growth range',
+        icon: Crosshair,
+        render: () => <MuscleTargetsWidget />,
+      },
+      {
+        id: 'improved',
+        title: 'Most improved',
+        description: 'Biggest e1RM gains in the range',
+        icon: Rocket,
+        render: () => <MostImprovedWidget workouts={workouts} from={from} />,
+      },
+      {
+        id: 'repRanges',
+        title: 'Rep ranges',
+        description: 'Strength vs hypertrophy vs endurance work',
+        icon: PieChart,
+        render: () => <RepRangesWidget workouts={workouts} />,
+      },
+      {
+        id: 'weekdays',
+        title: 'When you train',
+        description: 'Favourite days and times',
+        icon: Sunrise,
+        render: () => <WhenYouTrainWidget workouts={workouts} />,
+      },
+      {
+        id: 'duration',
+        title: 'Session length',
+        description: 'Average workout duration',
+        icon: Timer,
+        render: () => <SessionLengthWidget range={range} />,
+      },
+      {
+        id: 'lifetime',
+        title: 'Lifetime',
+        description: 'Total lifted, reps and hours — with a twist',
+        icon: Mountain,
+        render: () => <LifetimeWidget />,
+      },
+      {
+        id: 'bests',
+        title: 'Records',
+        description: 'Longest, heaviest and busiest sessions',
+        icon: Medal,
+        render: () => <RecordsWidget />,
       },
       {
         id: 'volume',
@@ -162,7 +258,7 @@ function Overview({ editing, onDone, focus }: { editing: boolean; onDone: () => 
         render: () => <BodyWeightWidget />,
       },
     ],
-    [workouts, range, rangeLabel],
+    [workouts, range, rangeLabel, from],
   );
 
   if (!history.sorted.length) {
@@ -230,9 +326,8 @@ function VolumeWidget({ range }: { range: RangeKey }) {
   const history = useHistoryIndex();
   const unit = useSettings((s) => s.unit);
   const buckets = useMemo(() => volumeBuckets(history.sorted, range), [history, range]);
-  const monthly = range === '1y' || range === 'all';
   return (
-    <WidgetFrame title={`Volume per ${monthly ? 'month' : 'week'}`}>
+    <WidgetFrame title={`Volume per ${bucketUnit(range)}`}>
       <Card>
         <PeriodBarChart
           data={buckets.map((b) => ({ ...b, value: toDisplayWeight(b.value, unit) }))}

@@ -4,6 +4,12 @@ A mobile-first, offline-first gym tracker that runs entirely in the browser. No 
 
 ## Features
 
+**Momentum & goals**
+
+- **The fire** — an animated flame showing how "on fire" you are. Every workout feeds it (more for heavier sessions relative to your own recent median volume/sets), it grows live set by set during a session, and it decays daily without training. Train to your weekly goal and it holds near maximum. Tap it for sparks
+- Weekly goal (1–7×), "This week 2/3" progress, and a **goal streak** that only counts weeks that hit the goal
+- Top-of-screen reminder when your streak ends in 2 or 1 days and the goal isn't met yet
+
 **Workout logging**
 
 - Touch-first active workout screen: 48 px+ targets, ± steppers with press-and-hold repeat, select-on-focus inputs, comma decimals
@@ -12,6 +18,8 @@ A mobile-first, offline-first gym tracker that runs entirely in the browser. No 
 - Later sets inherit earlier values as placeholders, so straight sets are one tap each
 - Rest timer starts automatically on set completion: floating bar, compositor-only progress ring, ±15 s, presets (1:00 / 1:30 / 2:00 / 3:00), chime + vibration
 - Swipe a set left to reveal **Delete** (long swipe deletes instantly, with Undo)
+- **Log a past workout** you forgot to start at the gym (pick date and times; previous values and PRs compare only against earlier sessions)
+- Edit the start time of a running workout, and the name/date/times of finished ones
 - In-progress workout survives refreshes, tab closes and app switches
 - Screen wake lock during workouts
 
@@ -34,12 +42,14 @@ A mobile-first, offline-first gym tracker that runs entirely in the browser. No 
 - **Rotating 3D body heat map** of training volume — Today / Week / Month / Year; the more sets a muscle got, the hotter it glows. Tap a muscle (or the ranked list) to inspect it
 - Real-time PR detection (heaviest weight, most reps, best set volume, est. 1RM) with haptics, sound and an animated toast
 - **Per-lift history**: every exercise with a sparkline and change since you started; full view with time ranges, PR-marked chart and a session table
-- Weekly/monthly volume tonnage, training-frequency heatmap, working sets by muscle, recent PRs
+- Daily/weekly/monthly volume (1W–All), training-frequency heatmap, recent PRs
+- More widgets: weekly goal history, momentum history, weekly sets per muscle vs the 10–20 growth range, most improved lifts, rep-range mix, when you train, session length, records, and lifetime totals ("≈ 3.2 African elephants")
+- **Profile** tab: lifetime stats, frequency calendar, this week's 3D muscles, weekly goal — with the ⚙︎ Settings inside
 - Body measurements (weight, body fat, 8 circumferences) with an exponentially smoothed trend line
 
 **Design**
 
-- Light / dark / system theme, plus a **Liquid Glass** mode (translucent `bg-white/70` / `bg-slate-900/60` surfaces, `backdrop-blur-md backdrop-saturate-150`, specular top edge, layered shadows)
+- Light / dark / system theme, **8 accent colours**, plus a **Liquid Glass** mode (translucent `bg-white/70` / `bg-slate-900/60` surfaces, `backdrop-blur-md backdrop-saturate-150`, specular top edge, layered shadows)
 - Battery saver: automatically drops to solid surfaces on low battery, Save-Data or _Reduce Transparency_
 - Bottom sheets on phones (drag to dismiss), dialogs on desktop; side rail navigation on large screens
 - **Customisable widgets** on the Workout and Analytics tabs — tap **Edit** to reorder, remove or add; every widget opens its detailed view
@@ -118,7 +128,9 @@ src/
 
 ## Browser notes
 
-- **Haptics** use the Vibration API (Android). iOS has no Vibration API; on iOS 18+ Forge triggers the system haptic via a native switch control during taps.
+- **Haptics** use the Vibration API (Android). iOS has no Vibration API; on iOS 18+ Forge triggers the system haptic via a native switch control during taps, and **Haptic sounds** (on by default on iPhone) play soft synthesised clicks instead — they follow the silent switch.
+- **Pinch-zoom is disabled** (viewport meta, `touch-action`, and iOS gesture events) for an app-like feel.
+- **Streak reminders** appear when you open the app; web apps can't schedule notifications while closed without a push server.
 - **Sound** unlocks on the first tap (browser autoplay rules).
 - **Install** via the browser's install prompt (Settings → Install Forge), or on iPhone: Share → Add to Home Screen.
 - Data is per browser and per origin. Use **Settings → Data & backup** to move it between devices.

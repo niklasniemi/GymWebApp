@@ -24,7 +24,7 @@
   --accent: #256abf;
   --accent-fg: #ffffff;
   --accent-text: #256abf;
-  --accent-soft: rgb(42 120 214 / 0.12);
+  --accent-soft: color-mix(in srgb, var(--accent) 13%, transparent);
   --success: #0ca30c;
   --success-text: #006300;
   --success-soft: rgb(12 163 12 / 0.12);
@@ -36,15 +36,20 @@
   --scrim: rgb(0 0 0 / 0.4);
 
   /* Chart roles (validated categorical slots 1–2, chrome) */
-  --chart-1: #2a78d6;
+  --chart-1: var(--accent);
   --chart-2: #eb6834;
+  /* Categorical identity colours (validated palette, slots 1–3). */
+  --cat-1: #2a78d6;
+  --cat-2: #eb6834;
+  --cat-3: #1baf7a;
   --chart-grid: #e1e0d9;
   --chart-axis: #898781;
   --heat-0: #ecebe7;
-  --heat-1: #b7d3f6;
-  --heat-2: #6da7ec;
-  --heat-3: #2a78d6;
-  --heat-4: #184f95;
+  /* Sequential ramp derived from the accent, so the calendar follows the theme colour. */
+  --heat-1: color-mix(in oklab, var(--chart-1) 30%, var(--heat-0));
+  --heat-2: color-mix(in oklab, var(--chart-1) 58%, var(--heat-0));
+  --heat-3: var(--chart-1);
+  --heat-4: color-mix(in oklab, var(--chart-1), black 30%);
 
   --shadow-1: 0 1px 2px rgb(0 0 0 / 0.05), 0 1px 1px rgb(0 0 0 / 0.03);
   --shadow-float: 0 2px 4px rgb(0 0 0 / 0.04), 0 12px 32px -8px rgb(0 0 0 / 0.18);
@@ -59,7 +64,7 @@
     0 1px 1px rgb(0 0 0 / 0.03), 0 6px 16px -6px rgb(15 23 42 / 0.1), 0 20px 40px -16px rgb(15 23 42 / 0.16),
     inset 0 1px 0 rgb(255 255 255 / 0.6);
   --ambient-base: #eef0f4;
-  --ambient-1: rgb(109 167 236 / 0.55);
+  --ambient-1: color-mix(in srgb, var(--accent) 50%, transparent);
   --ambient-2: rgb(246 166 132 / 0.45);
   --ambient-3: rgb(110 214 176 / 0.4);
 
@@ -81,7 +86,7 @@
   --accent: #2a78d6;
   --accent-fg: #ffffff;
   --accent-text: #86b6ef;
-  --accent-soft: rgb(57 135 229 / 0.18);
+  --accent-soft: color-mix(in srgb, var(--accent-text) 18%, transparent);
   --success: #0ca30c;
   --success-text: #3ccf3c;
   --success-soft: rgb(12 163 12 / 0.2);
@@ -92,15 +97,18 @@
   --gold-soft: rgb(250 178 25 / 0.16);
   --scrim: rgb(0 0 0 / 0.6);
 
-  --chart-1: #3987e5;
+  --chart-1: color-mix(in oklab, var(--accent) 50%, var(--accent-text));
   --chart-2: #d95926;
+  --cat-1: #3987e5;
+  --cat-2: #d95926;
+  --cat-3: #199e70;
   --chart-grid: #2c2c2a;
   --chart-axis: #898781;
   --heat-0: #262624;
-  --heat-1: #184f95;
-  --heat-2: #256abf;
-  --heat-3: #3987e5;
-  --heat-4: #86b6ef;
+  --heat-1: color-mix(in oklab, var(--chart-1) 35%, var(--heat-0));
+  --heat-2: color-mix(in oklab, var(--chart-1) 65%, var(--heat-0));
+  --heat-3: var(--chart-1);
+  --heat-4: var(--accent-text);
 
   --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
   --shadow-float: 0 2px 4px rgb(0 0 0 / 0.3), 0 16px 40px -8px rgb(0 0 0 / 0.6);
@@ -114,11 +122,74 @@
     0 1px 1px rgb(0 0 0 / 0.2), 0 8px 20px -8px rgb(0 0 0 / 0.5), 0 24px 48px -20px rgb(0 0 0 / 0.6),
     inset 0 1px 0 rgb(255 255 255 / 0.06);
   --ambient-base: #070a12;
-  --ambient-1: rgb(28 92 171 / 0.55);
+  --ambient-1: color-mix(in srgb, var(--accent) 55%, transparent);
   --ambient-2: rgb(74 58 167 / 0.45);
   --ambient-3: rgb(16 110 84 / 0.35);
 
   color-scheme: dark;
+}
+
+/*
+ * Accent palettes. Each defines a button fill (white text ≥ 4.4:1) and an
+ * accent text colour (≥ 5.4:1 on its surface); soft tints, chart colour,
+ * calendar ramp and the glass ambient glow are all derived from these.
+ */
+:root[data-accent='violet'] {
+  --accent: #6a45d1;
+  --accent-text: #5b3cc4;
+}
+:root[data-accent='teal'] {
+  --accent: #0e7781;
+  --accent-text: #0b6e75;
+}
+:root[data-accent='green'] {
+  --accent: #1d7a39;
+  --accent-text: #1a6b33;
+}
+:root[data-accent='orange'] {
+  --accent: #c2410c;
+  --accent-text: #b23c0b;
+}
+:root[data-accent='pink'] {
+  --accent: #be2f69;
+  --accent-text: #ad2a5f;
+}
+:root[data-accent='red'] {
+  --accent: #c22a2a;
+  --accent-text: #b42222;
+}
+:root[data-accent='graphite'] {
+  --accent: #3d3d45;
+  --accent-text: #3d3d45;
+}
+
+:root.dark[data-accent='violet'] {
+  --accent: #6d4ee0;
+  --accent-text: #b6a4ff;
+}
+:root.dark[data-accent='teal'] {
+  --accent: #0d7f88;
+  --accent-text: #5fd3db;
+}
+:root.dark[data-accent='green'] {
+  --accent: #1c7f3f;
+  --accent-text: #74d892;
+}
+:root.dark[data-accent='orange'] {
+  --accent: #c4500f;
+  --accent-text: #ffa36b;
+}
+:root.dark[data-accent='pink'] {
+  --accent: #c8396f;
+  --accent-text: #ff8fb8;
+}
+:root.dark[data-accent='red'] {
+  --accent: #c93636;
+  --accent-text: #ff8a8a;
+}
+:root.dark[data-accent='graphite'] {
+  --accent: #5a5a66;
+  --accent-text: #c9c9d4;
 }
 
 /* Control fills (inputs, secondary buttons). Solid by default… */
@@ -176,6 +247,8 @@
 
 @layer base {
   html {
+    /* Scroll in any direction, but no pinch-zoom (app-like behaviour). */
+    touch-action: pan-x pan-y;
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
     background-color: var(--bg);
@@ -408,5 +481,121 @@
   *::before,
   *::after {
     scroll-behavior: auto !important;
+  }
+}
+
+/* ------------------------------------------------------------------------ */
+/* Momentum flame — layered SVG flames that flicker on transform/opacity    */
+/* only; embers rise; everything pauses off-screen or for reduced motion.  */
+/* ------------------------------------------------------------------------ */
+
+.flame-layer {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+.flame-outer {
+  animation: flame-a 1.7s ease-in-out infinite;
+}
+.flame-mid {
+  animation: flame-b 1.15s ease-in-out infinite;
+}
+.flame-core {
+  animation: flame-c 0.85s ease-in-out infinite;
+}
+.flame-glow {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: flame-glow 2.4s ease-in-out infinite;
+}
+
+.flame-ember {
+  position: absolute;
+  bottom: 30%;
+  border-radius: 9999px;
+  opacity: 0;
+  animation: ember-rise var(--ember-duration, 2s) ease-out var(--ember-delay, 0s) infinite;
+}
+
+[data-paused='true'] .flame-layer,
+[data-paused='true'] .flame-glow,
+[data-paused='true'] .flame-ember {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flame-layer,
+  .flame-glow {
+    animation: none;
+  }
+  .flame-ember {
+    display: none;
+  }
+}
+
+@keyframes flame-a {
+  0%,
+  100% {
+    transform: scale(1, 1) skewX(0deg);
+  }
+  25% {
+    transform: scale(1.03, 0.97) skewX(-2deg);
+  }
+  50% {
+    transform: scale(0.97, 1.05) skewX(1.5deg);
+  }
+  75% {
+    transform: scale(1.02, 0.98) skewX(2.5deg);
+  }
+}
+
+@keyframes flame-b {
+  0%,
+  100% {
+    transform: scale(1, 1) skewX(0deg);
+  }
+  33% {
+    transform: scale(0.95, 1.07) skewX(3deg);
+  }
+  66% {
+    transform: scale(1.04, 0.95) skewX(-3deg);
+  }
+}
+
+@keyframes flame-c {
+  0%,
+  100% {
+    transform: scale(1, 1);
+    opacity: 0.95;
+  }
+  50% {
+    transform: scale(0.92, 1.1);
+    opacity: 0.8;
+  }
+}
+
+@keyframes flame-glow {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.85;
+  }
+}
+
+@keyframes ember-rise {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--ember-dx, 0px), var(--ember-rise, -90px)) scale(0.2);
+    opacity: 0;
   }
 }

@@ -24,7 +24,24 @@ export const useDashboard = create<DashboardState>()(
     }),
     {
       name: 'forge:dashboard',
-      version: 1,
+      version: 2,
+      // v2 introduced the momentum fire and weekly-goal widgets — surface them in saved layouts.
+      migrate: (persisted, version) => {
+        const state = (persisted ?? { layouts: {} }) as Pick<DashboardState, 'layouts'>;
+        if (version < 2) {
+          const insertAfter = (ids: string[] | undefined, after: string, id: string) => {
+            if (!ids || ids.includes(id)) return ids;
+            const i = ids.indexOf(after);
+            return [...ids.slice(0, i + 1), id, ...ids.slice(i + 1)];
+          };
+          state.layouts = {
+            ...state.layouts,
+            workout: insertAfter(state.layouts.workout, 'quickStart', 'fire'),
+            analytics: insertAfter(insertAfter(state.layouts.analytics, 'stats', 'goalWeeks'), 'goalWeeks', 'momentum'),
+          };
+        }
+        return state as DashboardState;
+      },
       storage: createJSONStorage(() => safeLocalStorage),
       partialize: ({ layouts }) => ({ layouts }),
     },

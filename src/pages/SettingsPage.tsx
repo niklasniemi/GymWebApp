@@ -1,5 +1,8 @@
 import { useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import {
+  ArrowLeft,
+  Check,
+  Vibrate,
   Database,
   Download,
   FileJson,
@@ -34,12 +37,14 @@ import {
   workoutsToCSV,
 } from '../lib/io';
 import { promptInstall, usePWA } from '../lib/pwa';
-import { playChime } from '../lib/sound';
+import { playChime, playHapticSound } from '../lib/sound';
 import { getExerciseMap, getSnapshot, useData, type ImportMode } from '../store/data';
 import { useFavorites } from '../store/favorites';
-import { getSettings, REST_PRESETS, sanitizeSettings, useSettings } from '../store/settings';
+import { ACCENT_OPTIONS, getSettings, REST_PRESETS, sanitizeSettings, useSettings } from '../store/settings';
+import { cn } from '../lib/utils';
+import type { AccentId } from '../types';
 import { toast } from '../store/toast';
-import { confirm } from '../store/ui';
+import { confirm, navigate } from '../store/ui';
 import type { DataSnapshot, Settings } from '../types';
 
 const STORAGE_LABELS = {
@@ -56,6 +61,13 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6 pb-6">
+      <button
+        type="button"
+        onClick={() => navigate('profile')}
+        className="-mb-4 -ml-2 flex min-h-11 items-center gap-1 rounded-xl px-2 pt-4 text-sm font-semibold text-accent-text"
+      >
+        <ArrowLeft size={18} aria-hidden /> Profile
+      </button>
       <PageHeader title="Settings" subtitle="Preferences" />
 
       <section aria-labelledby="appearance">
@@ -79,6 +91,10 @@ export default function SettingsPage() {
                 { value: 'dark', label: <IconLabel icon={<Moon size={15} />}>Dark</IconLabel>, ariaLabel: 'Dark' },
               ]}
             />
+          </div>
+          <div className="pb-2">
+            <p className="mb-2 text-[15px] font-medium">Accent colour</p>
+            <AccentPicker value={s.accent} onChange={(accent) => s.update({ accent })} />
           </div>
           <SwitchRow
             checked={s.glass}
@@ -105,6 +121,17 @@ export default function SettingsPage() {
           <span id="training">Training</span>
         </SectionTitle>
         <Card className="space-y-4">
+          <SettingBlock label="Weekly workout goal">
+            <Segmented
+              label="Weekly workout goal"
+              value={s.weeklyGoal}
+              onChange={(weeklyGoal) => s.update({ weeklyGoal })}
+              options={[1, 2, 3, 4, 5, 6, 7].map((v) => ({ value: v, label: `${v}×`, ariaLabel: `${v} per week` }))}
+            />
+            <p className="mt-1.5 px-1 text-xs text-fg-2">
+              Your fire burns at full heat when you hit this; the streak only counts weeks that reach it.
+            </p>
+          </SettingBlock>
           <SettingBlock label="Units">
             <Segmented
               label="Units"
@@ -175,6 +202,26 @@ export default function SettingsPage() {
           <div className="flex items-center gap-3">
             <div className="flex-1">
               <SwitchRow
+                checked={s.hapticSound}
+                onChange={(hapticSound) => {
+                  s.update({ hapticSound });
+                  if (hapticSound) playHapticSound('success');
+                }}
+                label="Haptic sounds"
+                description={
+                  vibrationSupported
+                    ? 'Soft clicks alongside vibration.'
+                    : 'Soft clicks and thuds stand in for vibration — iPhone web apps can’t vibrate. Muted by the silent switch.'
+                }
+              />
+            </div>
+            <Button size="sm" variant="secondary" icon={Vibrate} onClick={() => playHapticSound('pr')}>
+              Test
+            </Button>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <SwitchRow
                 checked={s.sound}
                 onChange={(sound) => s.update({ sound })}
                 label="Sounds"
@@ -190,6 +237,45 @@ export default function SettingsPage() {
 
       <DataSection />
       <AppSection />
+    </div>
+  );
+}
+
+function AccentPicker({ value, onChange }: { value: AccentId; onChange: (a: AccentId) => void }) {
+  return (
+    <div role="radiogroup" aria-label="Accent colour" className="grid grid-cols-4 gap-2 sm:grid-cols-8">
+      {ACCENT_OPTIONS.map((a) => {
+        const selected = a.id === value;
+        return (
+          <button
+            key={a.id}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            aria-label={a.label}
+            onClick={() => {
+              haptic('select');
+              onChange(a.id);
+            }}
+            className={cn(
+              'flex min-h-16 flex-col items-center justify-center gap-1 rounded-2xl text-xs font-medium transition-transform active:scale-95',
+              selected ? 'bg-fill-strong text-fg' : 'text-fg-2',
+            )}
+          >
+            <span
+              aria-hidden
+              className={cn(
+                'grid size-8 place-items-center rounded-full text-white shadow-sm',
+                selected && 'ring-2 ring-fg ring-offset-2 ring-offset-[var(--surface)]',
+              )}
+              style={{ background: a.swatch }}
+            >
+              {selected && <Check size={16} strokeWidth={3} />}
+            </span>
+            {a.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

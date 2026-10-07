@@ -47,6 +47,7 @@ export function useAppearance() {
   const theme = useSettings((s) => s.theme);
   const glass = useSettings((s) => s.glass);
   const autoPowerSaver = useSettings((s) => s.autoPowerSaver);
+  const accent = useSettings((s) => s.accent);
   const systemDark = useMediaQuery('(prefers-color-scheme: dark)');
   const powerSaver = usePowerSaver();
 
@@ -58,9 +59,10 @@ export function useAppearance() {
     root.classList.toggle('dark', dark);
     root.style.colorScheme = dark ? 'dark' : 'light';
     root.dataset.glass = glassOn ? 'on' : 'off';
+    root.dataset.accent = accent;
     const bg = getComputedStyle(root).getPropertyValue('--bg').trim();
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg || (dark ? '#0d0d0d' : '#f2f2ef'));
-  }, [dark, glassOn]);
+  }, [dark, glassOn, accent]);
 
   return { dark, glassOn, powerSaverActive: glass && autoPowerSaver && powerSaver };
 }

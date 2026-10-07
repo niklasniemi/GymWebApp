@@ -55,7 +55,9 @@ export const ExerciseCard = memo(function ExerciseCard({ weId, index, total }: P
 
   const exerciseId = we?.exerciseId ?? '';
   const sets = we?.sets;
-  const last = useMemo(() => lastSession(history, exerciseId), [history, exerciseId]);
+  // Back-filled sessions compare against what happened before them.
+  const before = useActiveWorkout((s) => (s.workout?.plannedEnd ? s.workout.startedAt : undefined));
+  const last = useMemo(() => lastSession(history, exerciseId, undefined, before), [history, exerciseId, before]);
   const prevSets = useMemo(() => matchPreviousSets(sets ?? [], last?.sets), [sets, last]);
   const labels = useMemo(() => setLabels(sets ?? []), [sets]);
   const hints = useMemo(() => inSessionHints(sets ?? []), [sets]);

@@ -11,6 +11,8 @@ export type SetType = (typeof SET_TYPES)[number];
 
 export type PRType = 'weight' | 'reps' | 'volume' | 'e1rm';
 export type ThemePref = 'system' | 'light' | 'dark';
+export const ACCENTS = ['blue', 'violet', 'teal', 'green', 'orange', 'pink', 'red', 'graphite'] as const;
+export type AccentId = (typeof ACCENTS)[number];
 export type EffortMetric = 'rpe' | 'rir' | 'off';
 
 export interface Exercise {
@@ -56,6 +58,11 @@ export interface Workout {
   routineId?: string;
   startedAt: number;
   endedAt?: number;
+  /**
+   * Set while back-filling a past workout: the session's real end time. On
+   * finish it becomes `endedAt` (instead of "now").
+   */
+  plannedEnd?: number;
   exercises: WorkoutExercise[];
   notes?: string;
 }
@@ -111,8 +118,16 @@ export interface Settings {
   autoStartRest: boolean;
   effortMetric: EffortMetric;
   haptics: boolean;
+  /** Soft click sounds that stand in for vibration (iPhone has no web haptics). */
+  hapticSound: boolean;
   sound: boolean;
   keepAwake: boolean;
+  /** Main accent colour. */
+  accent: AccentId;
+  /** Target workouts per week — drives the fire, streak and goal widgets. */
+  weeklyGoal: number;
+  /** Shown on the profile page. */
+  name: string;
 }
 
 export interface DataSnapshot {

@@ -17,6 +17,9 @@ import {
   Zap,
 } from 'lucide-react';
 import { WidgetBoard, WidgetFrame, type WidgetDef } from '../components/widgets/WidgetBoard';
+import { FireWidget } from '../components/fire/FireWidget';
+import { WorkoutTimeSheet } from '../components/workout/WorkoutTimeSheet';
+import { goalStatus } from '../lib/goals';
 import {
   BodyWeightWidget,
   FrequencyWidget,
@@ -31,7 +34,7 @@ import { WorkoutHistoryCard } from '../components/workout/WorkoutHistoryCard';
 import { WorkoutDetailSheet, WorkoutSummarySheet } from '../components/workout/WorkoutSheets';
 import { Button } from '../components/ui/Button';
 import { Card, EmptyState, PageHeader, StatTile } from '../components/ui/primitives';
-import { addDays, formatRelativeDay, startOfWeek } from '../lib/format';
+import { floorToMinutes, formatRelativeDay, startOfWeek } from '../lib/format';
 import { workoutVolume } from '../lib/history';
 import { muscleRangeStart } from '../lib/muscles';
 import { formatVolume } from '../lib/units';
@@ -54,7 +57,7 @@ export default function WorkoutPage() {
 
 const PAGE = 10;
 
-const WORKOUT_DEFAULTS = ['quickStart', 'thisWeek', 'routines', 'muscleMap', 'keyLifts', 'history'];
+const WORKOUT_DEFAULTS = ['quickStart', 'fire', 'thisWeek', 'routines', 'muscleMap', 'keyLifts', 'history'];
 
 function WorkoutHome() {
   const [editing, setEditing] = useState(false);
@@ -65,14 +68,21 @@ function WorkoutHome() {
       {
         id: 'quickStart',
         title: 'Quick start',
-        description: 'Start an empty workout',
+        description: 'Start a workout or log a past one',
         icon: Play,
         render: () => <QuickStartWidget />,
       },
       {
+        id: 'fire',
+        title: 'Momentum',
+        description: 'Your training fire, goal and streak',
+        icon: Flame,
+        render: () => <FireWidget />,
+      },
+      {
         id: 'thisWeek',
         title: 'This week',
-        description: 'Workouts, volume and streak',
+        description: 'Goal progress, volume and streak',
         icon: CalendarDays,
         render: () => <ThisWeekWidget />,
       },
@@ -159,56 +169,76 @@ function WorkoutHome() {
 }
 
 function QuickStartWidget() {
+  const [logging, setLogging] = useState(false);
+  const routines = useData((s) => s.routines);
+  const [now] = useState(() => Date.now());
   return (
-    <Card className="relative overflow-hidden">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -top-16 -right-10 size-48 rounded-full bg-accent opacity-15 blur-2xl"
-      />
-      <div className="relative">
-        <p className="text-[13px] font-semibold tracking-wide text-fg-2 uppercase">Quick start</p>
-        <p className="mt-1 text-xl font-bold tracking-tight">Ready when you are.</p>
-        <p className="mt-1 text-sm text-fg-2">Start empty and add exercises as you go.</p>
-        <Button
-          variant="primary"
-          size="lg"
-          block
-          icon={Play}
-          className="mt-4"
-          feedback="success"
-          onClick={() => startWorkout()}
-        >
-          Start empty workout
+    <>
+      <div className="flex gap-2">
+        <Button variant="primary" size="lg" block icon={Play} feedback="success" onClick={() => startWorkout()}>
+          Start workout
+        </Button>
+        <Button size="lg" icon={History} onClick={() => setLogging(true)} aria-label="Log a past workout">
+          Log past
         </Button>
       </div>
-    </Card>
+      <WorkoutTimeSheet
+        open={logging}
+        onClose={() => setLogging(false)}
+        title="Log a past workout"
+        description="Forgot to start it at the gym? Pick when it happened, then tick off what you did."
+        start={floorToMinutes(now - 90 * 60_000, 15)}
+        end={floorToMinutes(now - 15 * 60_000, 15)}
+        withRoutine
+        submitLabel="Start logging"
+        onSubmit={({ start, end, routineId }) => {
+          const routine = routines.find((r) => r.id === routineId);
+          void startWorkout({ routine, startedAt: start, plannedEnd: end ?? start + 3_600_000 });
+        }}
+      />
+    </>
   );
 }
 
 function ThisWeekWidget() {
   const history = useHistoryIndex();
   const unit = useSettings((s) => s.unit);
-  const stats = useMemo(() => weeklyStats(history.sorted), [history]);
+  const goal = useSettings((s) => s.weeklyGoal);
+  const [now] = useState(() => Date.now());
+  const volume = useMemo(() => {
+    const from = startOfWeek(now);
+    return history.sorted.filter((w) => w.startedAt >= from).reduce((n, w) => n + workoutVolume(w), 0);
+  }, [history, now]);
+  const status = useMemo(() => goalStatus(history.sorted, goal, now), [history, goal, now]);
   const tile = 'rounded-2xl text-left transition-transform active:scale-95';
   return (
     <WidgetFrame title="This week" action="Analytics" onAction={() => navigate('analytics', 'overview')}>
       <div className="grid grid-cols-3 gap-2">
-        <button type="button" className={tile} onClick={() => navigate('analytics', 'overview', 'stats')}>
-          <StatTile label="Workouts" value={stats.thisWeek} sub={`${stats.lastWeek} last week`} />
+        <button type="button" className={tile} onClick={() => navigate('analytics', 'overview', 'goalWeeks')}>
+          <StatTile
+            label="Workouts"
+            value={
+              <span className="tabular">
+                {status.thisWeek}
+                <span className="text-base font-semibold text-fg-2">/{status.goal}</span>
+              </span>
+            }
+            sub={status.currentMet ? 'Goal met ✓' : `${status.remaining} to go`}
+          />
         </button>
         <button type="button" className={tile} onClick={() => navigate('analytics', 'overview', 'volume')}>
-          <StatTile label="Volume" value={formatVolume(stats.volume, unit, false)} sub={unit} />
+          <StatTile label="Volume" value={formatVolume(volume, unit, false)} sub={unit} />
         </button>
-        <button type="button" className={tile} onClick={() => navigate('analytics', 'overview', 'frequency')}>
+        <button type="button" className={tile} onClick={() => navigate('analytics', 'overview', 'goalWeeks')}>
           <StatTile
             label="Streak"
             value={
               <span className="inline-flex items-center gap-1">
-                {stats.streak}
-                {stats.streak > 0 && <Flame size={20} className="text-[var(--chart-2)]" aria-hidden />}
+                {status.streak}
+                {status.streak > 0 && <Flame size={20} className="text-[#f97316]" aria-hidden />}
               </span>
             }
-            sub={stats.streak === 1 ? 'week' : 'weeks'}
+            sub={status.atRisk ? 'At risk!' : status.streak === 1 ? 'goal week' : 'goal weeks'}
           />
         </button>
       </div>
@@ -308,29 +338,4 @@ function HistoryWidget() {
       <WorkoutDetailSheet workout={opened} onClose={() => setOpenId(null)} />
     </WidgetFrame>
   );
-}
-
-function weeklyStats(sorted: Workout[]) {
-  const thisWeekStart = startOfWeek(Date.now());
-  const lastWeekStart = addDays(thisWeekStart, -7);
-  let thisWeek = 0;
-  let lastWeek = 0;
-  let volume = 0;
-  const weeks = new Set<number>();
-  for (const w of sorted) {
-    const ws = startOfWeek(w.startedAt);
-    weeks.add(ws);
-    if (ws === thisWeekStart) {
-      thisWeek++;
-      volume += workoutVolume(w);
-    } else if (ws === lastWeekStart) lastWeek++;
-  }
-  // Consecutive weeks with ≥1 workout, counting back from this week (or last, if this week is still empty).
-  let streak = 0;
-  let cursor = weeks.has(thisWeekStart) ? thisWeekStart : lastWeekStart;
-  while (weeks.has(cursor)) {
-    streak++;
-    cursor = addDays(cursor, -7);
-  }
-  return { thisWeek, lastWeek, volume, streak };
 }

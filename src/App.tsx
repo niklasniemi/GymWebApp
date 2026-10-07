@@ -10,8 +10,9 @@ import { ConfirmHost } from './components/overlays/ConfirmHost';
 import { Toaster } from './components/overlays/Toaster';
 import { RestTimerBar } from './components/workout/RestTimerBar';
 import { useAppearance } from './hooks/useAppearance';
+import { useStreakReminder } from './hooks/useStreakReminder';
 import RoutinesPage from './pages/RoutinesPage';
-import SettingsPage from './pages/SettingsPage';
+import ProfilePage from './pages/ProfilePage';
 import UtilitiesPage from './pages/UtilitiesPage';
 import WorkoutPage from './pages/WorkoutPage';
 import { useData } from './store/data';
@@ -27,13 +28,14 @@ const PAGES: Record<Tab, ComponentType> = {
   routines: RoutinesPage,
   analytics: AnalyticsPage,
   utilities: UtilitiesPage,
-  settings: SettingsPage,
+  profile: ProfilePage,
 };
 
 export function App() {
   useAppearance();
   const status = useData((s) => s.status);
   const route = useRoute();
+  useStreakReminder(status === 'ready');
 
   useEffect(() => {
     void useData.getState().init();

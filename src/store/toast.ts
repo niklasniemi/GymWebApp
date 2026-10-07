@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { PRType } from '../types';
 import { uid } from '../lib/utils';
 
-export type ToastTone = 'default' | 'success' | 'error' | 'pr';
+export type ToastTone = 'default' | 'success' | 'error' | 'pr' | 'fire';
 
 export interface Toast {
   id: string;
@@ -54,6 +54,8 @@ export const toast = {
     useToasts.getState().push({ title, description, prs, tone: 'pr', duration: 4200 }),
   action: (title: string, action: Toast['action'], description?: string) =>
     useToasts.getState().push({ title, description, action, duration: 0 }),
+  fire: (title: string, description: string, action?: Toast['action']) =>
+    useToasts.getState().push({ title, description, action, tone: 'fire', duration: 9000 }),
   undo: (title: string, onUndo: () => void, description?: string) =>
     useToasts.getState().push({ title, description, action: { label: 'Undo', onClick: onUndo }, duration: 5000 }),
 };

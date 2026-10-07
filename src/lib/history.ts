@@ -72,12 +72,14 @@ function accumulate(b: ExerciseBests, s: WorkoutSet) {
   b.e1rm = Math.max(b.e1rm, estimate1RM(w, r));
 }
 
-/** Most recent session of an exercise, optionally excluding a workout. */
-export function lastSession(index: HistoryIndex, exerciseId: string, excludeWorkoutId?: string) {
+/** Most recent session of an exercise, optionally excluding a workout or only before a time. */
+export function lastSession(index: HistoryIndex, exerciseId: string, excludeWorkoutId?: string, before?: number) {
   const list = index.sessions.get(exerciseId);
   if (!list) return undefined;
   for (let i = list.length - 1; i >= 0; i--) {
-    if (list[i].workoutId !== excludeWorkoutId) return list[i];
+    if (list[i].workoutId === excludeWorkoutId) continue;
+    if (before !== undefined && list[i].date >= before) continue;
+    return list[i];
   }
   return undefined;
 }

@@ -99,3 +99,22 @@ export function capitalize(s: string): string {
 export function pluralize(n: number, one: string, many = `${one}s`): string {
   return `${n} ${n === 1 ? one : many}`;
 }
+
+/** HH:MM in local time, for <input type="time">. */
+export function toTimeInput(ts: number): string {
+  const d = new Date(ts);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+/** Combines yyyy-mm-dd and HH:MM (local) into a timestamp. */
+export function combineDateTime(date: string, time: string): number {
+  const [y, m, d] = date.split('-').map(Number);
+  const [hh, mm] = time.split(':').map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1, hh || 0, mm || 0).getTime();
+}
+
+/** Rounds down to the nearest `minutes`. */
+export function floorToMinutes(ts: number, minutes: number): number {
+  const step = minutes * 60_000;
+  return Math.floor(ts / step) * step;
+}

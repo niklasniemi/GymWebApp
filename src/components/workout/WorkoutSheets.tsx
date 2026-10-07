@@ -1,5 +1,6 @@
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { BookmarkPlus, Clock, Layers, PartyPopper, Repeat, Trash2, Trophy, Weight } from 'lucide-react';
+import { BookmarkPlus, Clock, Layers, PartyPopper, Pencil, Repeat, Trash2, Trophy, Weight } from 'lucide-react';
 import { formatDate, formatDuration, formatTime, pluralize } from '../../lib/format';
 import { PR_LABELS, workoutPRCount, workoutSetCount, workoutVolume } from '../../lib/history';
 import { routineFromWorkout } from '../../lib/routines';
@@ -14,6 +15,9 @@ import { SectionTitle, StatTile } from '../ui/primitives';
 import { Sheet } from '../ui/Sheet';
 import { startWorkout } from './actions';
 import { WorkoutBreakdown } from './WorkoutBreakdown';
+import { WorkoutTimeSheet } from './WorkoutTimeSheet';
+import { Flame } from '../fire/Flame';
+import { clampLevel, fireStage, fuelEvents, momentumAt } from '../../lib/momentum';
 
 function saveAsRoutine(w: Workout) {
   const { routines, saveRoutine } = useData.getState();
@@ -87,6 +91,7 @@ export function WorkoutSummarySheet({ workout, onClose }: { workout: Workout | n
             <PartyPopper size={40} strokeWidth={1.75} aria-hidden />
           </motion.div>
           <WorkoutStatsGrid workout={workout} />
+          <MomentumGain workout={workout} />
           {prSets.length > 0 && (
             <section>
               <SectionTitle>New personal records</SectionTitle>
@@ -126,6 +131,8 @@ export function WorkoutSummarySheet({ workout, onClose }: { workout: Workout | n
 /** Past workout details with repeat / save / delete. */
 export function WorkoutDetailSheet({ workout, onClose }: { workout: Workout | null; onClose: () => void }) {
   const deleteWorkout = useData((s) => s.deleteWorkout);
+  const saveWorkout = useData((s) => s.saveWorkout);
+  const [editing, setEditing] = useState(false);
 
   const onDelete = async () => {
     if (!workout) return;
@@ -142,60 +149,104 @@ export function WorkoutDetailSheet({ workout, onClose }: { workout: Workout | nu
   };
 
   return (
-    <Sheet
-      open={Boolean(workout)}
-      onClose={onClose}
-      size="full"
-      title={workout?.name ?? ''}
-      description={
-        workout
-          ? `${formatDate(workout.startedAt)} · ${formatTime(workout.startedAt)}–${formatTime(workout.endedAt ?? workout.startedAt)}`
-          : undefined
-      }
-      footer={
-        <div className="flex gap-2">
-          <Button
-            variant="danger"
-            size="icon"
-            icon={Trash2}
-            aria-label="Delete workout"
-            feedback="warning"
-            onClick={onDelete}
-          />
-          <Button
-            icon={BookmarkPlus}
-            className="flex-1"
-            onClick={() => {
-              if (workout) saveAsRoutine(workout);
-            }}
-          >
-            Save routine
-          </Button>
-          <Button
-            variant="primary"
-            icon={Repeat}
-            className="flex-1"
-            onClick={async () => {
-              if (workout && (await startWorkout({ template: workout }))) {
-                onClose();
-                navigate('workout');
-              }
-            }}
-          >
-            Repeat
-          </Button>
-        </div>
-      }
-    >
+    <>
+      <Sheet
+        open={Boolean(workout)}
+        onClose={onClose}
+        size="full"
+        title={workout?.name ?? ''}
+        description={
+          workout
+            ? `${formatDate(workout.startedAt)} · ${formatTime(workout.startedAt)}–${formatTime(workout.endedAt ?? workout.startedAt)}`
+            : undefined
+        }
+        footer={
+          <div className="flex gap-2">
+            <Button size="icon" icon={Pencil} aria-label="Edit name, date and time" onClick={() => setEditing(true)} />
+            <Button
+              variant="danger"
+              size="icon"
+              icon={Trash2}
+              aria-label="Delete workout"
+              feedback="warning"
+              onClick={onDelete}
+            />
+            <Button
+              icon={BookmarkPlus}
+              className="flex-1"
+              onClick={() => {
+                if (workout) saveAsRoutine(workout);
+              }}
+            >
+              Save routine
+            </Button>
+            <Button
+              variant="primary"
+              icon={Repeat}
+              className="flex-1"
+              onClick={async () => {
+                if (workout && (await startWorkout({ template: workout }))) {
+                  onClose();
+                  navigate('workout');
+                }
+              }}
+            >
+              Repeat
+            </Button>
+          </div>
+        }
+      >
+        {workout && (
+          <div className="space-y-5 pb-2">
+            <WorkoutStatsGrid workout={workout} />
+            {workout.notes && (
+              <p className="rounded-2xl bg-fill p-3 text-sm whitespace-pre-wrap text-fg-2">{workout.notes}</p>
+            )}
+            <WorkoutBreakdown workout={workout} />
+          </div>
+        )}
+      </Sheet>
       {workout && (
-        <div className="space-y-5 pb-2">
-          <WorkoutStatsGrid workout={workout} />
-          {workout.notes && (
-            <p className="rounded-2xl bg-fill p-3 text-sm whitespace-pre-wrap text-fg-2">{workout.notes}</p>
-          )}
-          <WorkoutBreakdown workout={workout} />
-        </div>
+        <WorkoutTimeSheet
+          open={editing}
+          onClose={() => setEditing(false)}
+          title="Edit workout"
+          description="Fix the name, date or times — sets stay as logged."
+          name={workout.name}
+          start={workout.startedAt}
+          end={workout.endedAt ?? workout.startedAt}
+          submitLabel="Save changes"
+          onSubmit={({ start, end, name }) => {
+            saveWorkout({ ...workout, name: name ?? workout.name, startedAt: start, endedAt: end ?? start });
+            toast.success('Workout updated');
+          }}
+        />
       )}
-    </Sheet>
+    </>
+  );
+}
+
+/** How much this session fed the fire. */
+function MomentumGain({ workout }: { workout: Workout }) {
+  const workouts = useData((s) => s.workouts);
+  const goal = useSettings((s) => s.weeklyGoal);
+  const { before, after } = useMemo(() => {
+    const t = (workout.endedAt ?? workout.startedAt) + 1;
+    const others = workouts.filter((w) => w.id !== workout.id);
+    return {
+      before: Math.round(clampLevel(momentumAt(fuelEvents(others, goal), t))),
+      after: Math.round(clampLevel(momentumAt(fuelEvents(workouts, goal), t))),
+    };
+  }, [workouts, workout, goal]);
+  return (
+    <div className="flex items-center gap-3 rounded-2xl bg-fill p-3">
+      <Flame level={after} size={56} embers={false} />
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold">
+          Momentum {after}% <span className="text-[#f97316]">+{Math.max(0, after - before)}</span>
+        </p>
+        <p className="text-xs text-fg-2">{fireStage(after).blurb}</p>
+      </div>
+    </div>
   );
 }

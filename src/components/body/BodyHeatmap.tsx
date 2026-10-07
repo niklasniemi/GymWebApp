@@ -15,11 +15,12 @@ import { Pause, Play } from 'lucide-react';
 import { MUSCLE_FACING, MUSCLES, type Muscle } from '../../data/anatomy';
 import { useIsDark } from '../../hooks/useIsDark';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { useSettings } from '../../store/settings';
 import { haptic } from '../../lib/haptics';
 import type { MuscleLoad } from '../../lib/muscles';
 import { cn } from '../../lib/utils';
 import { BODY_HEIGHT, createBodyGeometry, loadBodyAsset, type BodyAsset } from './bodyAsset';
-import { BODY_THEME, createBodyMaterials } from './bodyMaterial';
+import { bodyTheme, createBodyMaterials } from './bodyMaterial';
 import { vertexHeat } from './bodyRig';
 
 export interface BodyHeatmapProps {
@@ -75,6 +76,7 @@ export default function BodyHeatmap({
 }: BodyHeatmapProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const dark = useIsDark();
+  const accent = useSettings((s) => s.accent);
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const [status, setStatus] = useState<Status>('loading');
   const [spinning, setSpinning] = useState(!reducedMotion);
@@ -173,7 +175,7 @@ export default function BodyHeatmap({
 
     const applyLook = () => {
       const { dark: d, selected: sel } = latest.current;
-      const theme = BODY_THEME[d ? 'dark' : 'light'];
+      const theme = bodyTheme(d);
       materials.setTheme(theme);
       materials.setSelected(sel ? MUSCLES.indexOf(sel) + 1 : -1);
       for (const m of [ringMat, haloMat, discMat]) m.color.set(theme.rim);
@@ -386,8 +388,10 @@ export default function BodyHeatmap({
   }, [heat]);
 
   useEffect(() => {
-    api.current?.applyLook();
-  }, [dark, selected]);
+    // Next frame: the app shell applies the new accent to <html> after child effects run.
+    const raf = requestAnimationFrame(() => api.current?.applyLook());
+    return () => cancelAnimationFrame(raf);
+  }, [dark, selected, accent]);
 
   useEffect(() => {
     if (focus) api.current?.face(MUSCLE_FACING[focus.muscle]);

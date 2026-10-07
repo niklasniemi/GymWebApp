@@ -1,10 +1,10 @@
 import { memo, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { Dumbbell, Flag, Plus, StickyNote, Timer, Trash2 } from 'lucide-react';
+import { Dumbbell, Flag, History, Pencil, Plus, Save, StickyNote, Timer, Trash2 } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useNow } from '../../hooks/useNow';
 import { useWakeLock } from '../../hooks/useWakeLock';
-import { formatClock, formatRest } from '../../lib/format';
+import { formatClock, formatDate, formatRest, formatTime } from '../../lib/format';
 import { haptic } from '../../lib/haptics';
 import { workoutVolume } from '../../lib/history';
 import { formatVolume } from '../../lib/units';
@@ -18,6 +18,9 @@ import { Button } from '../ui/Button';
 import { ActionList, EmptyState } from '../ui/primitives';
 import { Sheet } from '../ui/Sheet';
 import { ExerciseCard } from './ExerciseCard';
+import { WorkoutTimeSheet } from './WorkoutTimeSheet';
+import { Flame } from '../fire/Flame';
+import { useMomentum } from '../../hooks/useMomentum';
 
 export function ActiveWorkout({ onFinished }: { onFinished: (w: Workout) => void }) {
   // Subscribe to the exercise id list only — editing a set doesn't re-render this level.
@@ -190,24 +193,44 @@ const WorkoutHeader = memo(function WorkoutHeader({
 }) {
   const name = useActiveWorkout((s) => s.workout?.name ?? '');
   const startedAt = useActiveWorkout((s) => s.workout?.startedAt ?? 0);
+  const plannedEnd = useActiveWorkout((s) => s.workout?.plannedEnd);
   const rename = useActiveWorkout((s) => s.rename);
+  const setTimes = useActiveWorkout((s) => s.setTimes);
+  const [editingTime, setEditingTime] = useState(false);
+  const past = plannedEnd !== undefined;
 
   return (
     <>
       <div className="sticky top-0 z-20 -mx-4 px-3 pt-[max(env(safe-area-inset-top),0.5rem)] pb-2">
-        <div className="surface-bar flex items-center gap-2 rounded-[22px] p-1.5 pl-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-semibold tracking-wide text-fg-2 uppercase">Elapsed</p>
-            <Elapsed startedAt={startedAt} />
-          </div>
-          <Button size="icon" variant="secondary" icon={Timer} aria-label="Start rest timer" onClick={onTimer} />
+        <div className="surface-bar flex items-center gap-2 rounded-[22px] p-1.5 pl-1.5">
+          <button
+            type="button"
+            onClick={() => setEditingTime(true)}
+            aria-label={past ? 'Edit date and time of this past workout' : 'Edit workout start time'}
+            className="min-w-0 flex-1 rounded-2xl px-1.5 py-0.5 text-left transition-transform active:scale-[0.97]"
+          >
+            <span className="flex items-center gap-1 truncate text-[11px] font-semibold tracking-wide text-fg-2 uppercase">
+              {past ? `Past · ${formatDate(startedAt)}` : 'Elapsed'} <Pencil size={10} aria-hidden />
+            </span>
+            {past ? (
+              <span className="block truncate text-lg leading-tight font-bold tabular">
+                {formatTime(startedAt)}–{formatTime(plannedEnd)}
+              </span>
+            ) : (
+              <Elapsed startedAt={startedAt} />
+            )}
+          </button>
+          <LiveFlame />
+          {!past && (
+            <Button size="icon" variant="secondary" icon={Timer} aria-label="Start rest timer" onClick={onTimer} />
+          )}
           <Button size="icon" variant="secondary" aria-label="Workout options" onClick={onMore}>
             <span aria-hidden className="text-lg leading-none font-bold">
               ···
             </span>
           </Button>
-          <Button variant="success" icon={Flag} onClick={onFinish} feedback="success">
-            Finish
+          <Button variant="success" icon={past ? Save : Flag} onClick={onFinish} feedback="success">
+            {past ? 'Save' : 'Finish'}
           </Button>
         </div>
       </div>
@@ -229,17 +252,55 @@ const WorkoutHeader = memo(function WorkoutHeader({
           className="w-full truncate rounded-lg bg-transparent text-[28px] leading-tight font-bold tracking-tight outline-none focus-visible:ring-2 focus-visible:ring-accent-text"
         />
         <WorkoutStats />
+        {past && (
+          <p className="mt-3 flex gap-2 rounded-2xl bg-accent-soft p-3 text-sm text-fg">
+            <History size={18} className="mt-0.5 shrink-0 text-accent-text" aria-hidden />
+            <span>
+              Logging a past workout. Tick off the sets you did — they are saved with this date, and the rest timer
+              stays off.
+            </span>
+          </p>
+        )}
       </div>
+
+      <WorkoutTimeSheet
+        open={editingTime}
+        onClose={() => setEditingTime(false)}
+        title={past ? 'Past workout time' : 'Workout start time'}
+        description={past ? undefined : 'Forgot to start on time? Set when you actually began.'}
+        start={startedAt}
+        end={plannedEnd}
+        submitLabel="Update time"
+        onSubmit={({ start, end }) => {
+          setTimes(start, end);
+          haptic('success');
+        }}
+      />
     </>
   );
 });
 
+/** Small live flame that grows as sets are completed. */
+function LiveFlame() {
+  const { level, liveGain } = useMomentum();
+  return (
+    <div
+      className="flex shrink-0 items-center"
+      role="img"
+      aria-label={`Momentum ${level}%${liveGain > 0 ? `, plus ${liveGain} from this session` : ''}`}
+    >
+      <Flame level={level} size={40} embers={false} />
+      <span className="-ml-1 text-xs font-bold text-[#f97316] tabular">{level}</span>
+    </div>
+  );
+}
+
 function Elapsed({ startedAt }: { startedAt: number }) {
   const now = useNow(1000);
   return (
-    <p role="timer" aria-label="Elapsed workout time" className="text-xl leading-tight font-bold tabular">
-      {formatClock((now - startedAt) / 1000)}
-    </p>
+    <span role="timer" aria-label="Elapsed workout time" className="block text-xl leading-tight font-bold tabular">
+      {formatClock(Math.max(0, now - startedAt) / 1000)}
+    </span>
   );
 }
 

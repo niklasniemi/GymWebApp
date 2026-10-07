@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CircleAlert, CircleCheck, Info, Trophy, X } from 'lucide-react';
+import { CircleAlert, CircleCheck, Flame, Info, Trophy, X } from 'lucide-react';
 import { PR_LABELS } from '../../lib/history';
 import { cn } from '../../lib/utils';
 import { useToasts, type Toast } from '../../store/toast';
@@ -23,12 +23,13 @@ export function Toaster() {
   );
 }
 
-const ICONS = { default: Info, success: CircleCheck, error: CircleAlert, pr: Trophy };
+const ICONS = { default: Info, success: CircleCheck, error: CircleAlert, pr: Trophy, fire: Flame };
 const ICON_TONES = {
   default: 'text-accent-text',
   success: 'text-success-text',
   error: 'text-danger',
   pr: 'text-gold',
+  fire: 'text-[#f97316]',
 };
 
 const ToastItem = memo(function ToastItem({ toast }: { toast: Toast }) {
@@ -51,7 +52,7 @@ const ToastItem = memo(function ToastItem({ toast }: { toast: Toast }) {
       <motion.div
         className={cn(
           'relative grid size-9 shrink-0 place-items-center rounded-xl',
-          isPR ? 'bg-gold-soft' : 'bg-fill',
+          isPR ? 'bg-gold-soft' : toast.tone === 'fire' ? 'bg-[rgb(249_115_22/0.15)]' : 'bg-fill',
           ICON_TONES[toast.tone],
         )}
         initial={isPR ? { scale: 0.4, rotate: -25 } : false}

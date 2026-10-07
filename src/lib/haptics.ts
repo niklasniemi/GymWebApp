@@ -1,7 +1,8 @@
 import { useSettings } from '../store/settings';
+import { playHapticSound } from './sound';
 import { isIOS } from './utils';
 
-export type HapticKind = 'tap' | 'select' | 'success' | 'warning' | 'pr' | 'timer';
+export type HapticKind = 'tap' | 'select' | 'success' | 'warning' | 'pr' | 'timer' | 'spark';
 
 const PATTERNS: Record<HapticKind, number | number[]> = {
   tap: 8,
@@ -10,6 +11,7 @@ const PATTERNS: Record<HapticKind, number | number[]> = {
   warning: [30, 60, 30],
   pr: [20, 50, 20, 50, 60],
   timer: [180, 90, 180, 90, 260],
+  spark: [10, 30, 10, 30, 10, 30, 40],
 };
 
 let iosSwitch: HTMLLabelElement | null = null;
@@ -35,15 +37,26 @@ function iosTick() {
   iosSwitch.click();
 }
 
+/**
+ * Tactile feedback. Vibrates where supported (Android) or ticks the iOS 18
+ * system switch; optionally also plays a quiet click so iPhone users get
+ * feedback they can actually perceive. Both are independent settings.
+ */
 export function haptic(kind: HapticKind = 'tap') {
-  if (!useSettings.getState().haptics) return;
-  try {
-    if (typeof navigator.vibrate === 'function') {
-      navigator.vibrate(PATTERNS[kind]);
-    } else if (isIOS) {
-      iosTick();
+  const { haptics, hapticSound } = useSettings.getState();
+  if (haptics) {
+    try {
+      if (typeof navigator.vibrate === 'function') navigator.vibrate(PATTERNS[kind]);
+      else if (isIOS) iosTick();
+    } catch {
+      // Haptics are best-effort.
     }
-  } catch {
-    // Haptics are best-effort.
+  }
+  if (hapticSound) {
+    try {
+      playHapticSound(kind);
+    } catch {
+      // Audio is best-effort too.
+    }
   }
 }

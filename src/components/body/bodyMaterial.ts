@@ -1,4 +1,5 @@
 import { BackSide, Color, FrontSide, ShaderMaterial, Vector3 } from 'three';
+import { cssColor, mixColors } from '../../lib/color';
 import { HEAT_LEGEND } from '../../lib/muscles';
 
 /*
@@ -78,10 +79,16 @@ export interface BodyTheme {
   opacity: number;
 }
 
-export const BODY_THEME: Record<'light' | 'dark', BodyTheme> = {
-  light: { neutral: '#8ea5c3', rim: '#2a78d6', opacity: 0.32 },
-  dark: { neutral: '#6d8cba', rim: '#6da7ec', opacity: 0.3 },
-};
+/**
+ * Body colours follow the app accent: the rim glows in the accent and the
+ * translucent body is a cool grey tinted toward it.
+ */
+export function bodyTheme(dark: boolean): BodyTheme {
+  const rim = cssColor(dark ? '--accent-text' : '--accent');
+  return dark
+    ? { rim, neutral: mixColors(rim, '#5c6573', 0.55), opacity: 0.3 }
+    : { rim, neutral: mixColors(rim, '#a9b1bd', 0.6), opacity: 0.32 };
+}
 
 export function createBodyMaterials() {
   const uniforms = {

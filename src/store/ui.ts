@@ -6,11 +6,16 @@ import { create } from 'zustand';
 // zero-config way to get deep links and a working back button.
 // ---------------------------------------------------------------------------
 
-export const TABS = ['workout', 'routines', 'analytics', 'utilities', 'settings'] as const;
+export const TABS = ['workout', 'routines', 'analytics', 'utilities', 'profile'] as const;
 export type Tab = (typeof TABS)[number];
 
-/** `#/tab/sub/param` → segments (decoded). */
+/** `#/tab/sub/param` → segments (decoded). Legacy `#/settings` maps to `#/profile/settings`. */
 export function parseSegments(hash: string): string[] {
+  const segs = rawSegments(hash);
+  return segs[0] === 'settings' ? ['profile', 'settings', ...segs.slice(1)] : segs;
+}
+
+function rawSegments(hash: string): string[] {
   return hash
     .replace(/^#\/?/, '')
     .split('?')[0]
