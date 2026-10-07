@@ -127,4 +127,6 @@ export interface BackupFile extends DataSnapshot {
   version: 1;
   exportedAt: string;
   settings?: Partial<Settings>;
+  /** Starred exercise ids. */
+  favorites?: string[];
 }

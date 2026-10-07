@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
-import { Plus, SearchX } from 'lucide-react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { Plus, SearchX, Star } from 'lucide-react';
 import { useIsDesktop } from '../../hooks/useMediaQuery';
 import { useData, useHistoryIndex } from '../../store/data';
 import { Button } from '../ui/Button';
@@ -95,9 +95,20 @@ export function ExercisePicker({ open, onClose, onSelect, title = 'Add exercise'
         }
       >
         <div className="px-2 pb-4">
+          {!filter.filtered && filter.favoriteList.length > 0 && (
+            <PickerSection title="Favourites" first>
+              {filter.favoriteList.map((e) => (
+                <ExerciseRow
+                  key={`f-${e.id}`}
+                  exercise={e}
+                  onPress={toggle}
+                  selected={multi ? selected.includes(e.id) : undefined}
+                />
+              ))}
+            </PickerSection>
+          )}
           {showRecent && (
-            <section aria-label="Recently used">
-              <h3 className="px-3 pt-1 pb-1 text-[12px] font-semibold tracking-wide text-fg-2 uppercase">Recent</h3>
+            <PickerSection title="Recent" first={!filter.favoriteList.length}>
               {recent.map((e) => (
                 <ExerciseRow
                   key={`r-${e.id}`}
@@ -106,10 +117,12 @@ export function ExercisePicker({ open, onClose, onSelect, title = 'Add exercise'
                   selected={multi ? selected.includes(e.id) : undefined}
                 />
               ))}
-              <h3 className="px-3 pt-4 pb-1 text-[12px] font-semibold tracking-wide text-fg-2 uppercase">
-                All exercises
-              </h3>
-            </section>
+            </PickerSection>
+          )}
+          {!filter.filtered && (filter.favoriteList.length > 0 || showRecent) && (
+            <h3 className="px-3 pt-4 pb-1 text-[12px] font-semibold tracking-wide text-fg-2 uppercase">
+              All exercises
+            </h3>
           )}
           {filter.results.map((e) => (
             <ExerciseRow
@@ -119,18 +132,24 @@ export function ExercisePicker({ open, onClose, onSelect, title = 'Add exercise'
               selected={multi ? selected.includes(e.id) : undefined}
             />
           ))}
-          {filter.results.length === 0 && (
-            <EmptyState
-              icon={SearchX}
-              title="No matches"
-              action={
-                <Button variant="soft" icon={Plus} onClick={() => setCreating(true)}>
-                  Create “{filter.query || 'custom exercise'}”
-                </Button>
-              }
-            >
-              Try a different search or create a custom exercise.
+          {filter.results.length === 0 && filter.favoritesOnly && !filter.favoriteList.length ? (
+            <EmptyState icon={Star} title="No favourites yet">
+              Tap the ☆ next to any exercise to pin it here.
             </EmptyState>
+          ) : (
+            filter.results.length === 0 && (
+              <EmptyState
+                icon={SearchX}
+                title="No matches"
+                action={
+                  <Button variant="soft" icon={Plus} onClick={() => setCreating(true)}>
+                    Create “{filter.query || 'custom exercise'}”
+                  </Button>
+                }
+              >
+                Try a different search or create a custom exercise.
+              </EmptyState>
+            )
           )}
         </div>
       </Sheet>
@@ -145,5 +164,18 @@ export function ExercisePicker({ open, onClose, onSelect, title = 'Add exercise'
         }}
       />
     </>
+  );
+}
+
+function PickerSection({ title, first, children }: { title: string; first?: boolean; children: ReactNode }) {
+  return (
+    <section aria-label={title}>
+      <h3
+        className={`px-3 pb-1 text-[12px] font-semibold tracking-wide text-fg-2 uppercase ${first ? 'pt-1' : 'pt-4'}`}
+      >
+        {title}
+      </h3>
+      {children}
+    </section>
   );
 }

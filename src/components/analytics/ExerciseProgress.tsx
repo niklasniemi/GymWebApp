@@ -18,22 +18,38 @@ const METRICS: { value: Metric; label: string; name: string }[] = [
 ];
 
 /** Strength curve for one exercise. Default export so it can be lazy-loaded. */
-export default function ExerciseProgress({ exerciseId, bodyweight }: { exerciseId: string; bodyweight?: boolean }) {
+export default function ExerciseProgress({
+  exerciseId,
+  bodyweight,
+  from = 0,
+  height,
+}: {
+  exerciseId: string;
+  bodyweight?: boolean;
+  /** Only sessions on/after this timestamp. */
+  from?: number;
+  height?: number;
+}) {
   const history = useHistoryIndex();
   const unit = useSettings((s) => s.unit);
   const [metric, setMetric] = useState<Metric>(bodyweight ? 'reps' : 'e1rm');
-  const points = useMemo(() => sessionSeries(history.sessions.get(exerciseId)), [history, exerciseId]);
+  const points = useMemo(
+    () => sessionSeries(history.sessions.get(exerciseId)).filter((p) => p.date >= from),
+    [history, exerciseId, from],
+  );
 
   if (points.length < 2) {
     return (
       <EmptyState icon={ChartLine} title="Not enough data yet" className="py-6">
-        Log this exercise in at least two workouts to see your strength curve.
+        {from
+          ? 'Fewer than two sessions in this period — try a longer range.'
+          : 'Log this exercise in at least two workouts to see your strength curve.'}
       </EmptyState>
     );
   }
 
   const pick = (p: SessionPoint) => (metric === 'reps' ? p.reps : toDisplayWeight(p[metric], unit));
-  const data = points.map((p) => ({ date: p.date, value: pick(p) })).filter((d) => d.value > 0);
+  const data = points.map((p) => ({ date: p.date, value: pick(p), pr: p.pr })).filter((d) => d.value > 0);
   const format =
     metric === 'reps'
       ? (v: number) => `${formatNumber(v, 0)} reps`
@@ -54,7 +70,7 @@ export default function ExerciseProgress({ exerciseId, bodyweight }: { exerciseI
           label: m.label,
         }))}
       />
-      <TrendChart data={data} name={def.name} format={format} />
+      <TrendChart data={data} name={def.name} format={format} height={height} />
     </div>
   );
 }

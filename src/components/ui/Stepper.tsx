@@ -78,6 +78,8 @@ export const Stepper = memo(function Stepper({
   useEffect(() => () => commit.flush(), [commit]);
 
   const holdRef = useRef<{ delay?: ReturnType<typeof setTimeout>; repeat?: ReturnType<typeof setInterval> }>({});
+  /** Active press: where it started, and whether it became a hold-repeat or was cancelled by movement. */
+  const pressRef = useRef<{ x: number; y: number; repeated: boolean; cancelled: boolean } | null>(null);
   const pointerPressRef = useRef(false);
 
   const bump = (dir: 1 | -1, withHaptic = true) => {
@@ -98,18 +100,41 @@ export const Stepper = memo(function Stepper({
   };
   useEffect(() => stopHold, []);
 
+  const cancelPress = () => {
+    if (pressRef.current) pressRef.current.cancelled = true;
+    stopHold();
+  };
+
+  /*
+   * A tap bumps on release, not on press: scrolling the page or swiping a
+   * set row with a finger that lands on +/- must never change the value.
+   * Holding still for HOLD_DELAY starts auto-repeat.
+   */
   const pressHandlers = (dir: 1 | -1) => ({
     onPointerDown: (e: PointerEvent) => {
       if (e.button !== 0 || disabled) return;
       pointerPressRef.current = true;
-      bump(dir);
+      pressRef.current = { x: e.clientX, y: e.clientY, repeated: false, cancelled: false };
       holdRef.current.delay = setTimeout(() => {
+        const p = pressRef.current;
+        if (!p || p.cancelled) return;
+        p.repeated = true;
+        bump(dir);
         holdRef.current.repeat = setInterval(() => bump(dir, false), HOLD_INTERVAL);
       }, HOLD_DELAY);
     },
-    onPointerUp: stopHold,
-    onPointerLeave: stopHold,
-    onPointerCancel: stopHold,
+    onPointerMove: (e: PointerEvent) => {
+      const p = pressRef.current;
+      if (p && !p.repeated && Math.hypot(e.clientX - p.x, e.clientY - p.y) > 8) cancelPress();
+    },
+    onPointerUp: () => {
+      const p = pressRef.current;
+      stopHold();
+      pressRef.current = null;
+      if (p && !p.cancelled && !p.repeated) bump(dir);
+    },
+    onPointerLeave: cancelPress,
+    onPointerCancel: cancelPress,
     onContextMenu: (e: MouseEvent) => e.preventDefault(),
     // Keyboard / assistive-tech activation (no pointerdown precedes it).
     onClick: () => {

@@ -36,6 +36,8 @@ interface ActiveWorkoutState {
   updateSet: (weId: string, setId: string, patch: SetPatch) => void;
   cycleSetType: (weId: string, setId: string) => void;
   removeSet: (weId: string, setId: string) => void;
+  /** Re-inserts a set (undo for delete). */
+  insertSet: (weId: string, set: WorkoutSet, index: number) => void;
   toggleSet: (weId: string, setId: string) => ToggleResult;
   /** Persists completed sets to history and clears the session. */
   finish: () => Workout | null;
@@ -203,6 +205,14 @@ export const useActiveWorkout = create<ActiveWorkoutState>()(
 
         removeSet: (weId, setId) =>
           updateExercise(weId, (we) => ({ ...we, sets: we.sets.filter((s) => s.id !== setId) })),
+
+        insertSet: (weId, set, index) =>
+          updateExercise(weId, (we) => {
+            if (we.sets.some((s) => s.id === set.id)) return we;
+            const sets = we.sets.slice();
+            sets.splice(Math.min(index, sets.length), 0, set);
+            return { ...we, sets };
+          }),
 
         toggleSet: (weId, setId) => {
           const w = get().workout;

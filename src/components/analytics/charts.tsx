@@ -31,6 +31,8 @@ const GRID = { stroke: 'var(--chart-grid)', strokeWidth: 1, vertical: false } as
 export interface TimePoint {
   date: number;
   value: number;
+  /** Marks a personal-record session (gold marker). */
+  pr?: boolean;
 }
 
 interface TooltipRow {
@@ -131,7 +133,19 @@ export const TrendChart = memo(function TrendChart({
     <ChartFrame
       title={`${name} over time`}
       height={height}
-      table={<DataTable rows={data.map((d) => [formatShortDate(d.date), format(d.value)])} head={['Date', name]} />}
+      legend={
+        data.some((d) => d.pr) ? (
+          <p className="mb-1 flex items-center gap-1.5 px-1 text-xs text-fg-2" aria-hidden>
+            <span className="size-2 rounded-full bg-[var(--gold)]" /> Personal-record session
+          </p>
+        ) : undefined
+      }
+      table={
+        <DataTable
+          rows={data.map((d) => [formatShortDate(d.date), format(d.value), d.pr ? 'PR' : ''])}
+          head={['Date', name, 'Record']}
+        />
+      }
     >
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 16, right: 44, bottom: 0, left: 0 }}>
@@ -177,12 +191,25 @@ export const TrendChart = memo(function TrendChart({
             activeDot={{ r: 5, fill: 'var(--chart-1)', stroke: 'var(--surface)', strokeWidth: 2 }}
             isAnimationActive={false}
           />
+          {data
+            .filter((d) => d.pr && d !== last)
+            .map((d) => (
+              <ReferenceDot
+                key={`pr-${d.date}`}
+                x={d.date}
+                y={d.value}
+                r={4.5}
+                fill="var(--gold)"
+                stroke="var(--surface)"
+                strokeWidth={2}
+              />
+            ))}
           {last && (
             <ReferenceDot
               x={last.date}
               y={last.value}
               r={4}
-              fill="var(--chart-1)"
+              fill={last.pr ? 'var(--gold)' : 'var(--chart-1)'}
               stroke="var(--surface)"
               strokeWidth={2}
               label={{ value: format(last.value), position: 'right', fill: 'var(--fg)', fontSize: 12, fontWeight: 600 }}

@@ -198,20 +198,35 @@ export function workoutPRCount(w: Workout): number {
 }
 
 export interface SessionPoint {
+  workoutId: string;
   date: number;
   e1rm: number;
   weight: number;
   volume: number;
   reps: number;
+  sets: number;
+  /** Any set in this session set a personal record. */
+  pr: boolean;
 }
 
 /** One data point per session for strength curves. */
 export function sessionSeries(sessions: ExerciseSession[] | undefined): SessionPoint[] {
   if (!sessions) return [];
   return sessions.map((s) => {
-    const p: SessionPoint = { date: s.date, e1rm: 0, weight: 0, volume: 0, reps: 0 };
+    const p: SessionPoint = {
+      workoutId: s.workoutId,
+      date: s.date,
+      e1rm: 0,
+      weight: 0,
+      volume: 0,
+      reps: 0,
+      sets: 0,
+      pr: false,
+    };
     for (const set of s.sets) {
+      if (set.prs?.length) p.pr = true;
       if (set.type === 'warmup') continue;
+      p.sets++;
       p.e1rm = Math.max(p.e1rm, estimate1RM(set.weight, set.reps));
       p.weight = Math.max(p.weight, set.weight ?? 0);
       p.reps = Math.max(p.reps, set.reps ?? 0);

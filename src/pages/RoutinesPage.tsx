@@ -1,8 +1,18 @@
 import { memo, useState, type KeyboardEvent } from 'react';
 import { Reorder, useDragControls } from 'framer-motion';
-import { ClipboardList, Copy, Ellipsis, GripVertical, Pencil, Play, Plus, Trash2, Zap } from 'lucide-react';
+import {
+  ClipboardList,
+  Copy,
+  Ellipsis,
+  GripVertical,
+  PersonStanding,
+  Pencil,
+  Play,
+  Plus,
+  Trash2,
+  Zap,
+} from 'lucide-react';
 import { ExerciseLibrary } from '../components/exercises/ExerciseLibrary';
-import { RoutineEditor } from '../components/routines/RoutineEditor';
 import { startWorkout } from '../components/workout/actions';
 import { Button } from '../components/ui/Button';
 import { ActionList, Card, EmptyState, PageHeader } from '../components/ui/primitives';
@@ -14,14 +24,15 @@ import { sampleRoutines } from '../lib/routines';
 import { uid } from '../lib/utils';
 import { exerciseName, useData, useExerciseMap } from '../store/data';
 import { toast } from '../store/toast';
-import { confirm, navigate } from '../store/ui';
+import { confirm, navigate, useSubRoute, useUI } from '../store/ui';
 import type { Routine } from '../types';
 
 type View = 'routines' | 'exercises';
 
 export default function RoutinesPage() {
-  const [view, setView] = useState<View>('routines');
-  const [editing, setEditing] = useState<{ routine: Routine | null } | null>(null);
+  const [sub] = useSubRoute();
+  const view: View = sub === 'exercises' ? 'exercises' : 'routines';
+  const editRoutine = useUI((s) => s.editRoutine);
 
   return (
     <div className="space-y-4 pb-6">
@@ -30,7 +41,7 @@ export default function RoutinesPage() {
         subtitle="Library"
         actions={
           view === 'routines' && (
-            <Button variant="primary" icon={Plus} onClick={() => setEditing({ routine: null })}>
+            <Button variant="primary" icon={Plus} onClick={() => editRoutine(null)}>
               New
             </Button>
           )
@@ -39,18 +50,17 @@ export default function RoutinesPage() {
       <Segmented
         label="Library section"
         value={view}
-        onChange={setView}
+        onChange={(v) => navigate('routines', v === 'routines' ? undefined : v, undefined, { replace: true })}
         options={[
           { value: 'routines', label: 'Routines' },
           { value: 'exercises', label: 'Exercises' },
         ]}
       />
       {view === 'routines' ? (
-        <RoutineList onEdit={(routine) => setEditing({ routine })} onCreate={() => setEditing({ routine: null })} />
+        <RoutineList onEdit={(routine) => editRoutine(routine.id)} onCreate={() => editRoutine(null)} />
       ) : (
         <ExerciseLibrary />
       )}
-      <RoutineEditor open={editing !== null} routine={editing?.routine ?? null} onClose={() => setEditing(null)} />
     </div>
   );
 }
@@ -137,6 +147,14 @@ function RoutineList({ onEdit, onCreate }: { onEdit: (r: Routine) => void; onCre
                   if (await startWorkout({ routine: r })) navigate('workout');
                 },
               },
+              {
+                label: 'Muscles & details',
+                icon: PersonStanding,
+                onSelect: () => {
+                  setMenuFor(null);
+                  useUI.getState().openRoutine(menuFor.id);
+                },
+              },
               { label: 'Edit', icon: Pencil, onSelect: () => (setMenuFor(null), onEdit(menuFor)) },
               {
                 label: 'Duplicate',
@@ -200,6 +218,7 @@ const RoutineCard = memo(function RoutineCard({
 }) {
   const controls = useDragControls();
   const exMap = useExerciseMap();
+  const openRoutine = useUI((s) => s.openRoutine);
   const totalSets = routine.exercises.reduce((n, e) => n + e.sets, 0);
 
   const onHandleKey = (e: KeyboardEvent) => {
@@ -233,13 +252,18 @@ const RoutineCard = memo(function RoutineCard({
         >
           <GripVertical size={18} aria-hidden />
         </button>
-        <div className="min-w-0 flex-1 py-1">
-          <h3 className="truncate text-[17px] font-bold">{routine.name}</h3>
-          <p className="text-[13px] text-fg-2">
+        <button
+          type="button"
+          onClick={() => openRoutine(routine.id)}
+          aria-label={`${routine.name}: view muscles and details`}
+          className="min-w-0 flex-1 rounded-xl py-1 text-left"
+        >
+          <span className="block truncate text-[17px] font-bold">{routine.name}</span>
+          <span className="block text-[13px] text-fg-2">
             {routine.exercises.length} exercises · {totalSets} sets
             {routine.lastUsedAt ? ` · ${formatRelativeDay(routine.lastUsedAt)}` : ''}
-          </p>
-        </div>
+          </span>
+        </button>
         <Button
           size="icon"
           variant="ghost"
@@ -258,20 +282,28 @@ const RoutineCard = memo(function RoutineCard({
           }}
         />
       </div>
-      {routine.exercises.length > 0 && (
-        <ul className="mt-2 ml-9 space-y-0.5 text-sm text-fg-2">
+      {(routine.exercises.length > 0 || routine.notes) && (
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-hidden
+          onClick={() => openRoutine(routine.id)}
+          className="mt-2 ml-9 block w-[calc(100%-2.25rem)] text-left text-sm text-fg-2"
+        >
           {routine.exercises.slice(0, 5).map((e) => (
-            <li key={e.id} className="flex gap-2">
+            <span key={e.id} className="flex gap-2 py-px">
               <span className="min-w-0 flex-1 truncate">{exerciseName(exMap, e.exerciseId)}</span>
               <span className="shrink-0 tabular">
                 {e.sets} × {e.reps}
               </span>
-            </li>
+            </span>
           ))}
-          {routine.exercises.length > 5 && <li className="text-xs text-muted">+{routine.exercises.length - 5} more</li>}
-        </ul>
+          {routine.exercises.length > 5 && (
+            <span className="block text-xs text-muted">+{routine.exercises.length - 5} more</span>
+          )}
+          {routine.notes && <span className="mt-2 block text-xs text-muted">{routine.notes}</span>}
+        </button>
       )}
-      {routine.notes && <p className="mt-2 ml-9 text-xs text-muted">{routine.notes}</p>}
     </Reorder.Item>
   );
 });

@@ -6,11 +6,16 @@ import { Card, PageHeader } from '../components/ui/primitives';
 import { Segmented } from '../components/ui/Segmented';
 import { SwitchRow } from '../components/ui/Switch';
 import { useSettings } from '../store/settings';
+import { navigate, useSubRoute } from '../store/ui';
 
 type Tool = 'plates' | 'warmup' | '1rm';
 
+const TOOLS: Tool[] = ['plates', 'warmup', '1rm'];
+
 export default function UtilitiesPage() {
-  const [tool, setTool] = useState<Tool>('plates');
+  const [sub] = useSubRoute();
+  const tool: Tool = TOOLS.includes(sub as Tool) ? (sub as Tool) : 'plates';
+  const setTool = (t: Tool) => navigate('utilities', t === 'plates' ? undefined : t, undefined, { replace: true });
   const unit = useSettings((s) => s.unit);
   const [barbell, setBarbell] = useState(true);
 

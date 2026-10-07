@@ -1,4 +1,4 @@
-import { Search, X } from 'lucide-react';
+import { Search, Star, X } from 'lucide-react';
 import { EQUIPMENT_LABELS, MUSCLE_LABELS } from '../../data/exercises';
 import { EQUIPMENT, MUSCLE_GROUPS } from '../../types';
 import { Chip } from '../ui/primitives';
@@ -51,9 +51,13 @@ export function ExerciseFilters({
       </div>
       <div
         role="group"
-        aria-label="Filter by muscle group"
+        aria-label="Filter by favourites or muscle group"
         className={`mt-2.5 flex gap-1.5 overflow-x-auto no-scrollbar ${inset}`}
       >
+        <Chip selected={filter.favoritesOnly} onClick={() => filter.setFavoritesOnly(!filter.favoritesOnly)}>
+          <Star size={14} aria-hidden fill={filter.favoritesOnly ? 'currentColor' : 'none'} />
+          Favourites
+        </Chip>
         {MUSCLE_GROUPS.map((m) => (
           <Chip key={m} selected={filter.muscle === m} onClick={() => filter.setMuscle(filter.muscle === m ? null : m)}>
             {MUSCLE_LABELS[m]}

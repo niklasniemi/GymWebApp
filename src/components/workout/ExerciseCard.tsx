@@ -16,6 +16,7 @@ import { ActionList } from '../ui/primitives';
 import { Sheet } from '../ui/Sheet';
 import { WarmupPlanner } from '../tools/WarmupPlanner';
 import { ExercisePicker } from '../exercises/ExercisePicker';
+import { deleteSet } from './actions';
 import { SetRow } from './SetRow';
 
 interface Props {
@@ -292,7 +293,7 @@ export const ExerciseCard = memo(function ExerciseCard({ weId, index, total }: P
           className="mt-4 mb-2"
           feedback="warning"
           onClick={() => {
-            if (menuSet) actions.removeSet(weId, menuSet.id);
+            if (menuSet) deleteSet(weId, menuSet.id);
             setMenuSetId(null);
           }}
         >

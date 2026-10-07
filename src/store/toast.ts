@@ -54,4 +54,6 @@ export const toast = {
     useToasts.getState().push({ title, description, prs, tone: 'pr', duration: 4200 }),
   action: (title: string, action: Toast['action'], description?: string) =>
     useToasts.getState().push({ title, description, action, duration: 0 }),
+  undo: (title: string, onUndo: () => void, description?: string) =>
+    useToasts.getState().push({ title, description, action: { label: 'Undo', onClick: onUndo }, duration: 5000 }),
 };

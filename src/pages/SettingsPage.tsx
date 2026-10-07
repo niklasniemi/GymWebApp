@@ -36,6 +36,7 @@ import {
 import { promptInstall, usePWA } from '../lib/pwa';
 import { playChime } from '../lib/sound';
 import { getExerciseMap, getSnapshot, useData, type ImportMode } from '../store/data';
+import { useFavorites } from '../store/favorites';
 import { getSettings, REST_PRESETS, sanitizeSettings, useSettings } from '../store/settings';
 import { toast } from '../store/toast';
 import { confirm } from '../store/ui';
@@ -216,6 +217,7 @@ interface PendingImport {
   fileName: string;
   data: DataSnapshot;
   settings?: Partial<Settings>;
+  favorites?: string[];
 }
 
 function DataSection() {
@@ -227,7 +229,7 @@ function DataSection() {
   const [busy, setBusy] = useState(false);
 
   const exportJSON = async () => {
-    const backup = createBackup(getSnapshot(), getSettings());
+    const backup = createBackup(getSnapshot(), getSettings(), useFavorites.getState().ids);
     const res = await deliverFile(
       datedFilename('forge-backup', 'json'),
       JSON.stringify(backup, null, 2),
@@ -257,8 +259,8 @@ function DataSection() {
       if (isCSV) {
         setPending({ kind: 'csv', fileName: file.name, data: workoutsFromCSV(text, useData.getState().exercises) });
       } else {
-        const { data, settings } = parseBackup(text);
-        setPending({ kind: 'json', fileName: file.name, data, settings });
+        const { data, settings, favorites } = parseBackup(text);
+        setPending({ kind: 'json', fileName: file.name, data, settings, favorites });
       }
     } catch (err) {
       haptic('warning');
@@ -281,6 +283,10 @@ function DataSection() {
     try {
       await useData.getState().importData(pending.data, mode);
       if (pending.settings) useSettings.getState().update(sanitizeSettings(pending.settings));
+      if (pending.favorites) {
+        const fav = useFavorites.getState();
+        fav.replace(mode === 'replace' ? pending.favorites : [...fav.ids, ...pending.favorites]);
+      }
       haptic('success');
       toast.success('Import complete', `${pluralize(pending.data.workouts.length, 'workout')} imported.`);
       setPending(null);
@@ -438,6 +444,26 @@ function AppSection() {
         </ul>
         <p className="text-xs text-muted">
           Forge v{__APP_VERSION__} · Runs entirely on your device. No account, no tracking.
+        </p>
+        <p className="text-xs text-muted">
+          3D body model:{' '}
+          <a
+            className="underline"
+            href="https://sketchfab.com/3d-models/human-body-f022e4a3641943328b2fbfdf0f7c3e1e"
+            target="_blank"
+            rel="noreferrer"
+          >
+            “HUMAN_BODY”
+          </a>{' '}
+          by{' '}
+          <a className="underline" href="https://sketchfab.com/vistaalienprime5665288" target="_blank" rel="noreferrer">
+            vistaalienprime
+          </a>
+          , licensed{' '}
+          <a className="underline" href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">
+            CC BY 4.0
+          </a>
+          . Optimised and segmented into muscle regions for this app.
         </p>
       </Card>
     </section>

@@ -7,13 +7,14 @@ import { uid } from '../../lib/utils';
 import { exerciseName, useData, useExerciseMap } from '../../store/data';
 import { REST_PRESETS } from '../../store/settings';
 import { toast } from '../../store/toast';
-import { confirm } from '../../store/ui';
+import { confirm, useUI } from '../../store/ui';
 import type { Routine, RoutineExercise } from '../../types';
 import { ExercisePicker } from '../exercises/ExercisePicker';
 import { Button } from '../ui/Button';
 import { EmptyState, Field, Select, TextInput } from '../ui/primitives';
 import { Sheet } from '../ui/Sheet';
 import { Stepper } from '../ui/Stepper';
+import { RoutineMuscleMap } from './RoutineMuscleMap';
 
 interface Props {
   open: boolean;
@@ -153,6 +154,17 @@ export function RoutineEditor({ open, routine, onClose }: Props) {
               Add exercises
             </Button>
           </div>
+
+          {draft.exercises.length > 0 && (
+            <section aria-label="Muscles worked">
+              <p className="mb-1.5 px-1 text-[13px] font-semibold text-fg-2">
+                Muscles worked <span className="font-normal text-muted">· updates as you edit</span>
+              </p>
+              <div className="rounded-2xl bg-fill p-2">
+                <RoutineMuscleMap routine={draft} height={300} />
+              </div>
+            </section>
+          )}
         </div>
       </Sheet>
       <ExercisePicker
@@ -296,4 +308,12 @@ function RoutineItem({
       </div>
     </Reorder.Item>
   );
+}
+
+/** App-level host so the editor can be opened from anywhere via `useUI().editRoutine(id)`. */
+export function RoutineEditorHost() {
+  const editor = useUI((s) => s.routineEditor);
+  const close = useUI((s) => s.closeRoutineEditor);
+  const routine = useData((s) => (editor?.id ? (s.routines.find((r) => r.id === editor.id) ?? null) : null));
+  return <RoutineEditor open={editor !== null} routine={routine} onClose={close} />;
 }

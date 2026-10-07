@@ -11,14 +11,17 @@ A mobile-first, offline-first gym tracker that runs entirely in the browser. No 
 - Previous-session values shown per set (warm-ups matched to warm-ups); tap **Previous** to copy them, or just tap ✓ to log a repeat
 - Later sets inherit earlier values as placeholders, so straight sets are one tap each
 - Rest timer starts automatically on set completion: floating bar, compositor-only progress ring, ±15 s, presets (1:00 / 1:30 / 2:00 / 3:00), chime + vibration
+- Swipe a set left to reveal **Delete** (long swipe deletes instantly, with Undo)
 - In-progress workout survives refreshes, tab closes and app switches
 - Screen wake lock during workouts
 
 **Routines & exercises**
 
 - Unlimited routines with drag-to-reorder (keyboard accessible), per-exercise sets / rep targets / rest
+- **3D muscle map per routine** — see which muscles a routine trains (live preview while editing)
 - Starter Push / Pull / Legs templates; save any finished workout as a routine
 - 75+ built-in exercises, filterable by muscle group and equipment; custom exercises with primary + secondary muscles
+- **Favourite exercises** (★) — pinned to the top of pickers and the library, with a Favourites filter
 
 **Utilities**
 
@@ -28,9 +31,10 @@ A mobile-first, offline-first gym tracker that runs entirely in the browser. No 
 
 **Analytics**
 
+- **Rotating 3D body heat map** of training volume — Today / Week / Month / Year; the more sets a muscle got, the hotter it glows. Tap a muscle (or the ranked list) to inspect it
 - Real-time PR detection (heaviest weight, most reps, best set volume, est. 1RM) with haptics, sound and an animated toast
+- **Per-lift history**: every exercise with a sparkline and change since you started; full view with time ranges, PR-marked chart and a session table
 - Weekly/monthly volume tonnage, training-frequency heatmap, working sets by muscle, recent PRs
-- Per-exercise strength curves (est. 1RM, heaviest, volume, reps)
 - Body measurements (weight, body fat, 8 circumferences) with an exponentially smoothed trend line
 
 **Design**
@@ -38,6 +42,7 @@ A mobile-first, offline-first gym tracker that runs entirely in the browser. No 
 - Light / dark / system theme, plus a **Liquid Glass** mode (translucent `bg-white/70` / `bg-slate-900/60` surfaces, `backdrop-blur-md backdrop-saturate-150`, specular top edge, layered shadows)
 - Battery saver: automatically drops to solid surfaces on low battery, Save-Data or _Reduce Transparency_
 - Bottom sheets on phones (drag to dismiss), dialogs on desktop; side rail navigation on large screens
+- **Customisable widgets** on the Workout and Analytics tabs — tap **Edit** to reorder, remove or add; every widget opens its detailed view
 
 **Data**
 
@@ -65,6 +70,7 @@ npm run dev
 | `npm run lint`                | ESLint (incl. React Compiler rules)            |
 | `npm run format`              | Prettier                                       |
 | `npm run generate-pwa-assets` | Regenerate PWA icons from `public/favicon.svg` |
+| `node scripts/optimize-model.mjs <in.glb>` | Rebuild `public/models/human_body.glb` (strip UVs, weld, quantise) |
 
 ## Deploying to GitHub Pages
 
@@ -94,6 +100,10 @@ src/
   pages/                One per tab; Analytics (and Recharts) is lazy-loaded
 ```
 
+### 3D body map
+
+`public/models/human_body.glb` is a single-mesh model, optimised from ~1 MB to ~400 KB (~310 KB gzipped). At load, every vertex is assigned to one of 16 muscle regions by `src/components/body/bodyRig.ts`, using landmarks measured off the mesh (arm axis, elbow, wrist, crotch, knee…) plus the surface normal for front / back / inner / outer. Per-muscle heat is written to a vertex attribute and blurred across neighbouring vertices for soft heat-map edges. A custom shader renders the translucent "hologram" look (fresnel rim, x-ray back faces). three.js and the model load lazily the first time a body map is shown, and are cached for offline use.
+
 ### Performance notes
 
 - Animations touch only `transform` and `opacity`. The rest-timer ring is two clipped half-arcs rotated by a single CSS animation (negative `animation-delay` = elapsed time) — zero JavaScript per frame.
@@ -101,6 +111,10 @@ src/
 - Number inputs commit through a debounced handler; ticking clocks live in small leaf components.
 - Blur is never stacked: nested glass surfaces fall back to a cheaper translucent fill, and the ambient background is a static gradient.
 - Vendor code is split into long-lived chunks (react, motion, dexie); Recharts loads on demand and is prefetched at idle.
+
+## Credits
+
+3D body model: [“HUMAN_BODY”](https://sketchfab.com/3d-models/human-body-f022e4a3641943328b2fbfdf0f7c3e1e) by [vistaalienprime](https://sketchfab.com/vistaalienprime5665288), licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Modified: UVs removed, geometry welded and quantised, segmented into muscle regions at runtime.
 
 ## Browser notes
 

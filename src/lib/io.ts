@@ -24,12 +24,13 @@ import { uid } from './utils';
 // JSON backup
 // ---------------------------------------------------------------------------
 
-export function createBackup(data: DataSnapshot, settings: Settings): BackupFile {
+export function createBackup(data: DataSnapshot, settings: Settings, favorites: string[] = []): BackupFile {
   return {
     app: 'forge',
     version: 1,
     exportedAt: new Date().toISOString(),
     settings,
+    favorites,
     ...data,
   };
 }
@@ -136,7 +137,11 @@ function cleanMeasurement(raw: unknown): BodyMeasurement | null {
 }
 
 /** Parses and sanitizes a backup file. Never trusts the input shape. */
-export function parseBackup(text: string): { data: DataSnapshot; settings?: Partial<Settings> } {
+export function parseBackup(text: string): {
+  data: DataSnapshot;
+  settings?: Partial<Settings>;
+  favorites?: string[];
+} {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
@@ -162,7 +167,10 @@ export function parseBackup(text: string): { data: DataSnapshot; settings?: Part
       .filter((x): x is BodyMeasurement => x !== null),
   };
   const settings = isObj(raw.settings) ? (raw.settings as Partial<Settings>) : undefined;
-  return { data, settings };
+  const favorites = Array.isArray(raw.favorites)
+    ? raw.favorites.filter((x): x is string => typeof x === 'string').slice(0, 1000)
+    : undefined;
+  return { data, settings, favorites };
 }
 
 // ---------------------------------------------------------------------------

@@ -15,6 +15,10 @@ export function ExerciseLibrary() {
   const openExercise = useUI((s) => s.openExercise);
   const filter = useExerciseFilter(exercises);
   const [creating, setCreating] = useState(false);
+  const sessionMeta = (id: string) => {
+    const n = history.sessions.get(id)?.length ?? 0;
+    return n ? `${n} session${n > 1 ? 's' : ''}` : undefined;
+  };
 
   return (
     <div className="space-y-3">
@@ -29,18 +33,21 @@ export function ExerciseLibrary() {
           Custom exercise
         </Button>
       </div>
+      {!filter.filtered && filter.favoriteList.length > 0 && (
+        <section aria-label="Favourites">
+          <h2 className="mb-2 px-1 text-[13px] font-semibold tracking-wide text-fg-2 uppercase">Favourites</h2>
+          <div className="surface rounded-3xl p-1.5">
+            {filter.favoriteList.map((e) => (
+              <ExerciseRow key={e.id} exercise={e} onPress={openExercise} meta={sessionMeta(e.id)} />
+            ))}
+          </div>
+          <h2 className="mt-4 px-1 text-[13px] font-semibold tracking-wide text-fg-2 uppercase">All exercises</h2>
+        </section>
+      )}
       <div className="surface rounded-3xl p-1.5">
-        {filter.results.map((e) => {
-          const sessions = history.sessions.get(e.id)?.length ?? 0;
-          return (
-            <ExerciseRow
-              key={e.id}
-              exercise={e}
-              onPress={openExercise}
-              meta={sessions ? `${sessions} session${sessions > 1 ? 's' : ''}` : undefined}
-            />
-          );
-        })}
+        {filter.results.map((e) => (
+          <ExerciseRow key={e.id} exercise={e} onPress={openExercise} meta={sessionMeta(e.id)} />
+        ))}
         {filter.results.length === 0 && (
           <EmptyState icon={SearchX} title="No matches">
             Adjust the filters or create a custom exercise.

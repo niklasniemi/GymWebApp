@@ -48,6 +48,20 @@ export function toggleSetDone(weId: string, setId: string): ToggleResult {
   return result;
 }
 
+/** Deletes a set from the active workout, offering an Undo toast. */
+export function deleteSet(weId: string, setId: string) {
+  const store = useActiveWorkout.getState();
+  const we = store.workout?.exercises.find((x) => x.id === weId);
+  const index = we?.sets.findIndex((s) => s.id === setId) ?? -1;
+  if (!we || index < 0) return;
+  const removed = we.sets[index];
+  store.removeSet(weId, setId);
+  toast.undo('Set deleted', () => {
+    useActiveWorkout.getState().insertSet(weId, removed, index);
+    haptic('tap');
+  });
+}
+
 /** Starts a workout, confirming before replacing one in progress. */
 export async function startWorkout(opts: { routine?: Routine; template?: Workout } = {}): Promise<boolean> {
   const active = useActiveWorkout.getState().workout;

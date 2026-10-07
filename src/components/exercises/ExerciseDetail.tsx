@@ -13,6 +13,7 @@ import { Badge, SectionTitle, StatTile } from '../ui/primitives';
 import { Sheet } from '../ui/Sheet';
 import { WarmupPlanner } from '../tools/WarmupPlanner';
 import { ExerciseForm } from './ExerciseForm';
+import { FavoriteButton } from './FavoriteButton';
 
 const ExerciseProgress = lazy(() => import('../analytics/ExerciseProgress'));
 
@@ -40,14 +41,19 @@ export function ExerciseDetailHost() {
             : undefined
         }
         headerAction={
-          ex?.custom ? (
-            <Button
-              size="icon-sm"
-              variant="secondary"
-              aria-label="Edit exercise"
-              icon={Pencil}
-              onClick={() => setEditing(true)}
-            />
+          ex ? (
+            <div className="flex items-center gap-1">
+              <FavoriteButton exerciseId={ex.id} name={ex.name} size="sm" />
+              {ex.custom && (
+                <Button
+                  size="icon-sm"
+                  variant="secondary"
+                  aria-label="Edit exercise"
+                  icon={Pencil}
+                  onClick={() => setEditing(true)}
+                />
+              )}
+            </div>
           ) : undefined
         }
       >

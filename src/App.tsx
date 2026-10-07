@@ -2,6 +2,8 @@ import { lazy, Suspense, useEffect, type ComponentType } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 import { Dumbbell } from 'lucide-react';
 import { ExerciseDetailHost } from './components/exercises/ExerciseDetail';
+import { RoutineDetailHost } from './components/routines/RoutineDetail';
+import { RoutineEditorHost } from './components/routines/RoutineEditor';
 import { AmbientBackground } from './components/layout/AmbientBackground';
 import { BottomNav } from './components/layout/BottomNav';
 import { ConfirmHost } from './components/overlays/ConfirmHost';
@@ -79,6 +81,8 @@ export function App() {
       <BottomNav />
       <RestTimerBar />
       <Toaster />
+      <RoutineDetailHost />
+      <RoutineEditorHost />
       <ExerciseDetailHost />
       <ConfirmHost />
     </MotionConfig>
