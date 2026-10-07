@@ -1,0 +1,412 @@
+@import 'tailwindcss';
+
+/* ------------------------------------------------------------------------ */
+/* Variants                                                                 */
+/* ------------------------------------------------------------------------ */
+
+@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant glass (&:where([data-glass='on'], [data-glass='on'] *));
+
+/* ------------------------------------------------------------------------ */
+/* Theme tokens — every color in the app resolves through these variables,  */
+/* so light/dark and Liquid Glass are pure CSS swaps with zero re-render.   */
+/* ------------------------------------------------------------------------ */
+
+:root {
+  --bg: #f2f2ef;
+  --surface: #ffffff;
+  --surface-2: #f1f1ee;
+  --surface-3: #e7e7e3;
+  --line: rgb(11 11 11 / 0.09);
+  --fg: #0b0b0b;
+  --fg-2: #52514e;
+  --muted: #75736e;
+  --accent: #256abf;
+  --accent-fg: #ffffff;
+  --accent-text: #256abf;
+  --accent-soft: rgb(42 120 214 / 0.12);
+  --success: #0ca30c;
+  --success-text: #006300;
+  --success-soft: rgb(12 163 12 / 0.12);
+  --danger: #d03b3b;
+  --danger-soft: rgb(208 59 59 / 0.1);
+  --warning: #a86f00;
+  --gold: #c98500;
+  --gold-soft: rgb(237 161 0 / 0.16);
+  --scrim: rgb(0 0 0 / 0.4);
+
+  /* Chart roles (validated categorical slots 1–2, chrome) */
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-grid: #e1e0d9;
+  --chart-axis: #898781;
+  --heat-0: #ecebe7;
+  --heat-1: #b7d3f6;
+  --heat-2: #6da7ec;
+  --heat-3: #2a78d6;
+  --heat-4: #184f95;
+
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.05), 0 1px 1px rgb(0 0 0 / 0.03);
+  --shadow-float: 0 2px 4px rgb(0 0 0 / 0.04), 0 12px 32px -8px rgb(0 0 0 / 0.18);
+
+  /* Liquid Glass */
+  --glass-bg: rgb(255 255 255 / 0.7); /* bg-white/70 */
+  --glass-bg-strong: rgb(255 255 255 / 0.82);
+  --glass-nested: rgb(255 255 255 / 0.55);
+  --glass-edge: rgb(11 11 11 / 0.06);
+  --glass-highlight: rgb(255 255 255 / 0.3); /* border-t-white/30 */
+  --glass-shadow:
+    0 1px 1px rgb(0 0 0 / 0.03), 0 6px 16px -6px rgb(15 23 42 / 0.1), 0 20px 40px -16px rgb(15 23 42 / 0.16),
+    inset 0 1px 0 rgb(255 255 255 / 0.6);
+  --ambient-base: #eef0f4;
+  --ambient-1: rgb(109 167 236 / 0.55);
+  --ambient-2: rgb(246 166 132 / 0.45);
+  --ambient-3: rgb(110 214 176 / 0.4);
+
+  --nav-h: 4.5rem;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #0d0d0d;
+  --surface: #1a1a19;
+  --surface-2: #242423;
+  --surface-3: #2f2f2d;
+  --line: rgb(255 255 255 / 0.09);
+  --fg: #fafaf9;
+  --fg-2: #c3c2b7;
+  --muted: #9a988f;
+  --accent: #2a78d6;
+  --accent-fg: #ffffff;
+  --accent-text: #86b6ef;
+  --accent-soft: rgb(57 135 229 / 0.18);
+  --success: #0ca30c;
+  --success-text: #3ccf3c;
+  --success-soft: rgb(12 163 12 / 0.2);
+  --danger: #e66767;
+  --danger-soft: rgb(230 103 103 / 0.14);
+  --warning: #fab219;
+  --gold: #fab219;
+  --gold-soft: rgb(250 178 25 / 0.16);
+  --scrim: rgb(0 0 0 / 0.6);
+
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-grid: #2c2c2a;
+  --chart-axis: #898781;
+  --heat-0: #262624;
+  --heat-1: #184f95;
+  --heat-2: #256abf;
+  --heat-3: #3987e5;
+  --heat-4: #86b6ef;
+
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-float: 0 2px 4px rgb(0 0 0 / 0.3), 0 16px 40px -8px rgb(0 0 0 / 0.6);
+
+  --glass-bg: rgb(15 23 42 / 0.6); /* bg-slate-900/60 */
+  --glass-bg-strong: rgb(15 23 42 / 0.76);
+  --glass-nested: rgb(30 41 59 / 0.5);
+  --glass-edge: rgb(255 255 255 / 0.06);
+  --glass-highlight: rgb(255 255 255 / 0.1); /* border-t-white/10 */
+  --glass-shadow:
+    0 1px 1px rgb(0 0 0 / 0.2), 0 8px 20px -8px rgb(0 0 0 / 0.5), 0 24px 48px -20px rgb(0 0 0 / 0.6),
+    inset 0 1px 0 rgb(255 255 255 / 0.06);
+  --ambient-base: #070a12;
+  --ambient-1: rgb(28 92 171 / 0.55);
+  --ambient-2: rgb(74 58 167 / 0.45);
+  --ambient-3: rgb(16 110 84 / 0.35);
+
+  color-scheme: dark;
+}
+
+/* Control fills (inputs, secondary buttons). Solid by default… */
+:root {
+  --fill: #efefeb;
+  --fill-strong: #e4e4df;
+}
+.dark {
+  --fill: #262625;
+  --fill-strong: #333331;
+}
+
+/* …and Apple-style translucent system fills in glass mode. */
+[data-glass='on'] {
+  --bg: var(--ambient-base);
+  --fill: rgb(120 120 128 / 0.12);
+  --fill-strong: rgb(120 120 128 / 0.2);
+}
+.dark[data-glass='on'] {
+  --fill: rgb(120 120 128 / 0.24);
+  --fill-strong: rgb(120 120 128 / 0.34);
+}
+
+@theme inline {
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-fill: var(--fill);
+  --color-fill-strong: var(--fill-strong);
+  --color-fg: var(--fg);
+  --color-fg-2: var(--fg-2);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-text: var(--accent-text);
+  --color-accent-soft: var(--accent-soft);
+  --color-success: var(--success);
+  --color-success-text: var(--success-text);
+  --color-success-soft: var(--success-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warning: var(--warning);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-scrim: var(--scrim);
+  --ease-out-expo: var(--ease-out);
+}
+
+/* ------------------------------------------------------------------------ */
+/* Base                                                                     */
+/* ------------------------------------------------------------------------ */
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    background-color: var(--bg);
+  }
+
+  /* No body background: it would paint over the fixed ambient layer (z < 0). */
+  body {
+    color: var(--fg);
+    font-family: var(--font-sans);
+    min-height: 100dvh;
+    overscroll-behavior-y: none;
+    /* Safety net against accidental sideways panning on phones (clip keeps sticky working). */
+    overflow-x: clip;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button,
+  [role='button'],
+  a,
+  input,
+  select,
+  label {
+    touch-action: manipulation;
+  }
+
+  button:not(:disabled),
+  [role='button'] {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent-text);
+    outline-offset: 2px;
+  }
+
+  /* 16px minimum prevents iOS from zooming into focused inputs. */
+  input,
+  select,
+  textarea {
+    font-size: max(1rem, 1em);
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+  }
+}
+
+/* ------------------------------------------------------------------------ */
+/* Surfaces — solid by default, Liquid Glass when [data-glass=on]           */
+/* ------------------------------------------------------------------------ */
+
+@layer components {
+  .surface {
+    background-color: var(--surface);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-1);
+  }
+
+  .surface-bar {
+    background-color: var(--surface);
+    border: 1px solid var(--line);
+  }
+
+  .surface-sheet {
+    background-color: var(--surface);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-float);
+  }
+
+  .surface-float {
+    background-color: var(--surface);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-float);
+  }
+
+  /* Glass: translucent + backdrop-blur-md + backdrop-saturate-150 + specular top edge. */
+  [data-glass='on'] .surface,
+  [data-glass='on'] .surface-bar,
+  [data-glass='on'] .surface-sheet,
+  [data-glass='on'] .surface-float {
+    background-color: var(--glass-bg);
+    border-color: var(--glass-edge);
+    border-top-color: var(--glass-highlight);
+    -webkit-backdrop-filter: blur(12px) saturate(150%);
+    backdrop-filter: blur(12px) saturate(150%);
+    box-shadow: var(--glass-shadow);
+  }
+
+  [data-glass='on'] .surface-bar,
+  [data-glass='on'] .surface-sheet,
+  [data-glass='on'] .surface-float {
+    background-color: var(--glass-bg-strong);
+  }
+
+  /*
+   * Overdraw guard: a blurred layer never sits inside another blurred layer.
+   * Nested glass gets a cheaper translucent fill instead of a second blur pass.
+   */
+  [data-glass='on'] :is(.surface, .surface-bar, .surface-sheet, .surface-float) :is(.surface, .surface-float) {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-color: var(--glass-nested);
+    box-shadow: inset 0 1px 0 var(--glass-highlight);
+  }
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    [data-glass='on'] :is(.surface, .surface-bar, .surface-sheet, .surface-float) {
+      background-color: var(--surface);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    [data-glass='on'] :is(.surface, .surface-bar, .surface-sheet, .surface-float) {
+      background-color: var(--surface);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+
+  .field {
+    background-color: var(--fill);
+    border: 1px solid transparent;
+    border-radius: 0.75rem;
+    color: var(--fg);
+    min-height: 3rem;
+    padding-inline: 0.875rem;
+    width: 100%;
+  }
+
+  .field::placeholder {
+    color: var(--muted);
+  }
+
+  .field:focus {
+    outline: none;
+    border-color: var(--accent-text);
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* ------------------------------------------------------------------------ */
+/* Rest-timer ring — a compositor-only progress ring.                      */
+/* Two clipped halves rotate via `transform`; no stroke-dashoffset paints.  */
+/* Driven by a single CSS animation with a negative delay = elapsed time.   */
+/* ------------------------------------------------------------------------ */
+
+.timer-ring {
+  border-radius: 9999px;
+}
+
+.timer-ring > .timer-ring-track,
+.timer-ring .timer-ring-arc {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: var(--ring-w, 4px) solid currentColor;
+}
+
+.timer-ring > .timer-ring-track {
+  opacity: 0.18;
+}
+
+.timer-ring > .timer-ring-half {
+  position: absolute;
+  inset: 0;
+}
+
+.timer-ring > .timer-ring-half.is-right {
+  clip-path: inset(0 0 0 50%);
+}
+
+.timer-ring > .timer-ring-half.is-left {
+  clip-path: inset(0 50% 0 0);
+}
+
+.timer-ring > .timer-ring-half.is-right > .timer-ring-arc {
+  clip-path: inset(0 50% 0 0);
+  animation: ring-right var(--ring-duration, 60s) linear var(--ring-delay, 0s) both;
+}
+
+.timer-ring > .timer-ring-half.is-left > .timer-ring-arc {
+  clip-path: inset(0 0 0 50%);
+  animation: ring-left var(--ring-duration, 60s) linear var(--ring-delay, 0s) both;
+}
+
+.timer-ring[data-paused='true'] .timer-ring-arc {
+  animation-play-state: paused;
+}
+
+@keyframes ring-right {
+  0%,
+  50% {
+    transform: rotate(180deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes ring-left {
+  0% {
+    transform: rotate(180deg);
+  }
+  50%,
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+}

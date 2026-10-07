@@ -1,0 +1,11 @@
+node_modules
+dist
+dev-dist
+*.local
+.DS_Store
+*.log
+coverage
+.vite
+
+# Local editor/agent settings
+.claude/settings.local.json
