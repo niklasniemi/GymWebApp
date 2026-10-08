@@ -23,7 +23,7 @@ export default defineConfig({
       manifest: {
         name: 'Forge — Workout Tracker',
         short_name: 'Forge',
-        description: 'Offline-first gym & workout tracker. Log sets, track PRs, and see your progress.',
+        description: 'Offline-first gym, workout & nutrition tracker. Log sets and meals, track PRs, and see your progress.',
         lang: 'en',
         display: 'standalone',
         orientation: 'portrait',
@@ -41,6 +41,15 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest,glb}'],
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,
+        // The barcode scanner's WebAssembly (~1 MB) is only fetched when first used —
+        // cache it then, so scanning keeps working offline.
+        runtimeCaching: [
+          {
+            urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.endsWith('.wasm'),
+            handler: 'CacheFirst',
+            options: { cacheName: 'forge-wasm', expiration: { maxEntries: 4 } },
+          },
+        ],
       },
     }),
   ],

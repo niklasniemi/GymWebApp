@@ -6,7 +6,7 @@ import { create } from 'zustand';
 // zero-config way to get deep links and a working back button.
 // ---------------------------------------------------------------------------
 
-export const TABS = ['workout', 'routines', 'analytics', 'utilities', 'profile'] as const;
+export const TABS = ['workout', 'routines', 'food', 'analytics', 'profile', 'utilities'] as const;
 export type Tab = (typeof TABS)[number];
 
 /** `#/tab/sub/param` → segments (decoded). Legacy `#/settings` maps to `#/profile/settings`. */

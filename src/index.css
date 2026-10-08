@@ -42,6 +42,11 @@
   --cat-1: #2a78d6;
   --cat-2: #eb6834;
   --cat-3: #1baf7a;
+  /* Macronutrient identity colours (marks only — text stays in text tokens). */
+  --macro-protein: #e8505b;
+  --macro-carbs: #e59a0c;
+  --macro-fat: #8a63e8;
+  --water: #1e9be0;
   --chart-grid: #e1e0d9;
   --chart-axis: #898781;
   --heat-0: #ecebe7;
@@ -102,6 +107,10 @@
   --cat-1: #3987e5;
   --cat-2: #d95926;
   --cat-3: #199e70;
+  --macro-protein: #f2646e;
+  --macro-carbs: #f5ad25;
+  --macro-fat: #a184f5;
+  --water: #3fb3f2;
   --chart-grid: #2c2c2a;
   --chart-axis: #898781;
   --heat-0: #262624;
@@ -238,6 +247,10 @@
   --color-gold: var(--gold);
   --color-gold-soft: var(--gold-soft);
   --color-scrim: var(--scrim);
+  --color-protein: var(--macro-protein);
+  --color-carbs: var(--macro-carbs);
+  --color-fat: var(--macro-fat);
+  --color-water: var(--water);
   --ease-out-expo: var(--ease-out);
 }
 
@@ -246,6 +259,14 @@
 /* ------------------------------------------------------------------------ */
 
 @layer base {
+  /* Search fields render their own clear button. */
+  input[type='search']::-webkit-search-cancel-button,
+  input[type='search']::-webkit-search-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+    display: none;
+  }
+
   html {
     /* Scroll in any direction, but no pinch-zoom (app-like behaviour). */
     touch-action: pan-x pan-y;
@@ -473,6 +494,80 @@
   50%,
   100% {
     transform: rotate(0deg);
+  }
+}
+
+/* ------------------------------------------------------------------------ */
+/* Progress ring — same compositor-only technique: two clipped halves       */
+/* rotated by --pr-right / --pr-left, transitioned on transform.           */
+/* ------------------------------------------------------------------------ */
+
+.progress-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+}
+
+.progress-ring > .pr-track,
+.progress-ring .pr-arc {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: var(--ring-w, 8px) solid currentColor;
+}
+
+.progress-ring > .pr-track {
+  opacity: 0.14;
+}
+
+.progress-ring > .pr-half {
+  position: absolute;
+  inset: 0;
+}
+
+.progress-ring > .pr-half.is-right {
+  clip-path: inset(0 0 0 50%);
+}
+
+.progress-ring > .pr-half.is-left {
+  clip-path: inset(0 50% 0 0);
+}
+
+.progress-ring .pr-arc {
+  transition: transform 0.8s var(--ease-out);
+}
+
+.progress-ring > .pr-half.is-right > .pr-arc {
+  clip-path: inset(0 50% 0 0);
+  transform: rotate(var(--pr-right, 0deg));
+}
+
+.progress-ring > .pr-half.is-left > .pr-arc {
+  clip-path: inset(0 0 0 50%);
+  transform: rotate(var(--pr-left, 0deg));
+  transition-delay: var(--pr-left-delay, 0s);
+}
+
+/* Scanner viewfinder sweep: a full-height layer whose top edge is the line. */
+.scan-line {
+  animation: scan-sweep 2.2s ease-in-out infinite alternate;
+}
+
+@keyframes scan-sweep {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(calc(100% - 2px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-ring .pr-arc {
+    transition: none;
+  }
+  .scan-line {
+    animation: none;
   }
 }
 

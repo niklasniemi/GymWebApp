@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { OneRepMax } from '../components/tools/OneRepMax';
 import { PlateCalculator } from '../components/tools/PlateCalculator';
 import { WarmupPlanner } from '../components/tools/WarmupPlanner';
@@ -21,7 +22,14 @@ export default function UtilitiesPage() {
 
   return (
     <div className="space-y-4 pb-6">
-      <PageHeader title="Utilities" subtitle="Gym math" />
+      <button
+        type="button"
+        onClick={() => (window.history.length > 1 ? window.history.back() : navigate('profile'))}
+        className="-mb-4 -ml-2 flex min-h-11 items-center gap-1 rounded-xl px-2 pt-4 text-sm font-semibold text-accent-text"
+      >
+        <ArrowLeft size={18} aria-hidden /> Back
+      </button>
+      <PageHeader title="Tools" subtitle="Gym math" />
       <Segmented
         label="Tool"
         value={tool}

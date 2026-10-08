@@ -1,11 +1,11 @@
 import { memo } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Calculator,
   ChartNoAxesCombined,
   CircleUserRound,
   ClipboardList,
   Dumbbell,
+  UtensilsCrossed,
   type LucideIcon,
 } from 'lucide-react';
 import { haptic } from '../../lib/haptics';
@@ -16,8 +16,8 @@ import { navigate, useRoute, type Tab } from '../../store/ui';
 const ITEMS: { tab: Tab; label: string; icon: LucideIcon }[] = [
   { tab: 'workout', label: 'Workout', icon: Dumbbell },
   { tab: 'routines', label: 'Routines', icon: ClipboardList },
+  { tab: 'food', label: 'Food', icon: UtensilsCrossed },
   { tab: 'analytics', label: 'Analytics', icon: ChartNoAxesCombined },
-  { tab: 'utilities', label: 'Utilities', icon: Calculator },
   { tab: 'profile', label: 'Profile', icon: CircleUserRound },
 ];
 
@@ -37,7 +37,8 @@ export const BottomNav = memo(function BottomNav() {
     >
       <ul className="flex lg:flex-col lg:gap-1">
         {ITEMS.map(({ tab, label, icon: Icon }) => {
-          const active = route === tab;
+          // Tools (Utilities) live under Profile now.
+          const active = route === tab || (route === 'utilities' && tab === 'profile');
           return (
             <li key={tab} className="flex-1">
               <a

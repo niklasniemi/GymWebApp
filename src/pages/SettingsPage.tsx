@@ -2,6 +2,7 @@ import { useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import {
   ArrowLeft,
   Check,
+  ChevronRight,
   Vibrate,
   Database,
   Download,
@@ -13,6 +14,7 @@ import {
   ShieldCheck,
   Smartphone,
   Sun,
+  Target,
   Trash2,
   Upload,
   Volume2,
@@ -31,6 +33,7 @@ import {
   createBackup,
   datedFilename,
   deliverFile,
+  foodDiaryToCSV,
   ImportError,
   parseBackup,
   workoutsFromCSV,
@@ -40,6 +43,7 @@ import { promptInstall, usePWA } from '../lib/pwa';
 import { playChime, playHapticSound } from '../lib/sound';
 import { getExerciseMap, getSnapshot, useData, type ImportMode } from '../store/data';
 import { useFavorites } from '../store/favorites';
+import { getNutritionPrefs, sanitizeNutrition, useNutrition, useTargets } from '../store/nutrition';
 import { ACCENT_OPTIONS, getSettings, REST_PRESETS, sanitizeSettings, useSettings } from '../store/settings';
 import { cn } from '../lib/utils';
 import type { AccentId } from '../types';
@@ -235,6 +239,7 @@ export default function SettingsPage() {
         </Card>
       </section>
 
+      <NutritionSection />
       <DataSection />
       <AppSection />
     </div>
@@ -304,18 +309,68 @@ interface PendingImport {
   data: DataSnapshot;
   settings?: Partial<Settings>;
   favorites?: string[];
+  nutrition?: unknown;
+}
+
+function NutritionSection() {
+  const n = useNutrition(
+    useShallow((s) => ({ onlineSearch: s.onlineSearch, addExercise: s.addExercise, update: s.update })),
+  );
+  const targets = useTargets();
+  return (
+    <section aria-labelledby="nutrition">
+      <SectionTitle>
+        <span id="nutrition">Nutrition</span>
+      </SectionTitle>
+      <Card className="space-y-1">
+        <button
+          type="button"
+          onClick={() => navigate('food', 'goals')}
+          className="flex min-h-14 w-full items-center gap-3 py-2 text-left"
+        >
+          <Target size={20} className="shrink-0 text-accent-text" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-medium">Calorie & macro goals</span>
+            <span className="block text-[13px] text-fg-2 tabular">
+              {targets.kcal.toLocaleString()} kcal · P {targets.protein} g · C {targets.carbs} g · F {targets.fat} g
+            </span>
+          </span>
+          <ChevronRight size={18} className="shrink-0 text-muted" aria-hidden />
+        </button>
+        <SwitchRow
+          checked={n.addExercise}
+          onChange={(addExercise) => n.update({ addExercise })}
+          label="Add workout calories"
+          description="Raise the day's calorie budget by the estimated energy of your workouts."
+        />
+        <SwitchRow
+          checked={n.onlineSearch}
+          onChange={(onlineSearch) => n.update({ onlineSearch })}
+          label="Online food database"
+          description="Search and barcode lookups use Open Food Facts. Only the search words or barcode are sent — never your diary."
+        />
+      </Card>
+    </section>
+  );
 }
 
 function DataSection() {
   const storage = useData((s) => s.storage);
   const persisted = useData((s) => s.persisted);
-  const counts = useData(useShallow((s) => ({ w: s.workouts.length, r: s.routines.length, m: s.measurements.length })));
+  const counts = useData(
+    useShallow((s) => ({
+      w: s.workouts.length,
+      r: s.routines.length,
+      m: s.measurements.length,
+      f: new Set(s.foodEntries.map((e) => e.day)).size,
+    })),
+  );
   const fileRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<PendingImport | null>(null);
   const [busy, setBusy] = useState(false);
 
   const exportJSON = async () => {
-    const backup = createBackup(getSnapshot(), getSettings(), useFavorites.getState().ids);
+    const backup = createBackup(getSnapshot(), getSettings(), useFavorites.getState().ids, getNutritionPrefs());
     const res = await deliverFile(
       datedFilename('forge-backup', 'json'),
       JSON.stringify(backup, null, 2),
@@ -335,6 +390,16 @@ function DataSection() {
     if (res !== 'cancelled') toast.success('CSV exported', 'One row per set — opens in any spreadsheet.');
   };
 
+  const exportFoodCSV = async () => {
+    const { foodEntries } = useData.getState();
+    if (!foodEntries.length) {
+      toast.show('Nothing to export yet', 'Log some food first.');
+      return;
+    }
+    const res = await deliverFile(datedFilename('forge-food-diary', 'csv'), foodDiaryToCSV(foodEntries), 'text/csv');
+    if (res !== 'cancelled') toast.success('Food diary exported', 'One row per logged item.');
+  };
+
   const onFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -345,8 +410,8 @@ function DataSection() {
       if (isCSV) {
         setPending({ kind: 'csv', fileName: file.name, data: workoutsFromCSV(text, useData.getState().exercises) });
       } else {
-        const { data, settings, favorites } = parseBackup(text);
-        setPending({ kind: 'json', fileName: file.name, data, settings, favorites });
+        const { data, settings, favorites, nutrition } = parseBackup(text);
+        setPending({ kind: 'json', fileName: file.name, data, settings, favorites, nutrition });
       }
     } catch (err) {
       haptic('warning');
@@ -369,6 +434,8 @@ function DataSection() {
     try {
       await useData.getState().importData(pending.data, mode);
       if (pending.settings) useSettings.getState().update(sanitizeSettings(pending.settings));
+      const nutrition = sanitizeNutrition(pending.nutrition);
+      if (nutrition) useNutrition.getState().update(nutrition);
       if (pending.favorites) {
         const fav = useFavorites.getState();
         fav.replace(mode === 'replace' ? pending.favorites : [...fav.ids, ...pending.favorites]);
@@ -388,7 +455,7 @@ function DataSection() {
     const ok = await confirm({
       title: 'Delete all data?',
       message:
-        'Workouts, routines, custom exercises and measurements will be permanently erased from this device. Export a backup first if you might need it.',
+        'Workouts, routines, custom exercises, measurements and your food diary will be permanently erased from this device. Export a backup first if you might need it.',
       confirmLabel: 'Delete everything',
       destructive: true,
     });
@@ -409,7 +476,8 @@ function DataSection() {
             <p className="font-semibold">Stored on this device</p>
             <p className="text-fg-2">
               {storage ? STORAGE_LABELS[storage] : 'Loading…'} · {pluralize(counts.w, 'workout')},{' '}
-              {pluralize(counts.r, 'routine')}, {pluralize(counts.m, 'measurement')}
+              {pluralize(counts.r, 'routine')}, {pluralize(counts.m, 'measurement')}, {pluralize(counts.f, 'day')} of
+              food
             </p>
             {persisted && (
               <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-success-text">
@@ -426,7 +494,10 @@ function DataSection() {
           <Button icon={FileSpreadsheet} onClick={exportCSV}>
             Export workouts (CSV)
           </Button>
-          <Button icon={Upload} className="sm:col-span-2" onClick={() => fileRef.current?.click()}>
+          <Button icon={FileSpreadsheet} onClick={exportFoodCSV}>
+            Export food diary (CSV)
+          </Button>
+          <Button icon={Upload} onClick={() => fileRef.current?.click()}>
             Import JSON or CSV
           </Button>
         </div>
@@ -440,8 +511,8 @@ function DataSection() {
           tabIndex={-1}
         />
         <p className="text-xs text-muted">
-          Move data between devices: export here, then import on the other device. Nothing ever leaves your device
-          otherwise.
+          Move data between devices: export here, then import on the other device. Your data never leaves your device
+          otherwise — food searches only send the search words or barcode to Open Food Facts.
         </p>
         <Button variant="danger" block icon={Trash2} feedback="warning" onClick={clearAll}>
           Delete all data
@@ -474,6 +545,8 @@ function DataSection() {
                 ['Routines', pending.data.routines.length],
                 ['Custom exercises', pending.data.exercises.length],
                 ['Measurements', pending.data.measurements.length],
+                ['Food entries', pending.data.foodEntries.length],
+                ['Saved meals & foods', pending.data.savedMeals.length + pending.data.foods.length],
               ].map(([label, n]) => (
                 <li key={label} className="rounded-2xl bg-fill p-3">
                   <p className="text-xs font-semibold text-fg-2 uppercase">{label}</p>
@@ -529,7 +602,11 @@ function AppSection() {
           </li>
         </ul>
         <p className="text-xs text-muted">
-          Forge v{__APP_VERSION__} · Runs entirely on your device. No account, no tracking.
+          Forge v{__APP_VERSION__} · Runs entirely on your device. No account, no tracking. Food data from{' '}
+          <a className="underline" href="https://world.openfoodfacts.org" target="_blank" rel="noreferrer">
+            Open Food Facts
+          </a>{' '}
+          (ODbL).
         </p>
         <p className="text-xs text-muted">
           3D body model:{' '}

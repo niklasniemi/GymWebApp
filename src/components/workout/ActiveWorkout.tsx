@@ -1,6 +1,6 @@
 import { memo, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { Dumbbell, Flag, History, Pencil, Plus, Save, StickyNote, Timer, Trash2 } from 'lucide-react';
+import { Calculator, Dumbbell, Flag, History, Pencil, Plus, Save, StickyNote, Timer, Trash2 } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useNow } from '../../hooks/useNow';
 import { useWakeLock } from '../../hooks/useWakeLock';
@@ -10,7 +10,7 @@ import { workoutVolume } from '../../lib/history';
 import { formatVolume } from '../../lib/units';
 import { REST_PRESETS, useSettings } from '../../store/settings';
 import { useRestTimer } from '../../store/timer';
-import { confirm } from '../../store/ui';
+import { confirm, navigate } from '../../store/ui';
 import { useActiveWorkout } from '../../store/workout';
 import type { Workout } from '../../types';
 import { ExercisePicker } from '../exercises/ExercisePicker';
@@ -123,6 +123,11 @@ export function ActiveWorkout({ onFinished }: { onFinished: (w: Workout) => void
           items={[
             { label: 'Workout notes', icon: StickyNote, onSelect: () => setMenu('notes') },
             { label: 'Start rest timer', icon: Timer, onSelect: () => setMenu('timer') },
+            {
+              label: 'Plate calculator',
+              icon: Calculator,
+              onSelect: () => (setMenu('none'), navigate('utilities')),
+            },
             { label: 'Finish workout', icon: Flag, onSelect: () => (setMenu('none'), void onFinish()) },
             { label: 'Discard workout', icon: Trash2, destructive: true, onSelect: onDiscard },
           ]}

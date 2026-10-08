@@ -3,7 +3,8 @@ import { CalendarDays, Clock, Dumbbell, Minus, Pencil, Plus, Settings, Weight } 
 import { Flame } from '../components/fire/Flame';
 import { Button } from '../components/ui/Button';
 import { Card, PageHeader, StatTile } from '../components/ui/primitives';
-import { FrequencyWidget, MuscleMapWidget } from '../components/widgets/sharedWidgets';
+import { NutritionTodayWidget } from '../components/food/NutritionWidgets';
+import { FrequencyWidget, MuscleMapWidget, ToolsWidget } from '../components/widgets/sharedWidgets';
 import { WidgetFrame } from '../components/widgets/WidgetBoard';
 import { useMomentum } from '../hooks/useMomentum';
 import { formatDate } from '../lib/format';
@@ -47,8 +48,10 @@ function Profile() {
       />
       <IdentityCard />
       <LifetimeStats />
+      <NutritionTodayWidget />
       <FrequencyWidget />
       <WeekMuscles />
+      <ToolsWidget />
     </div>
   );
 }

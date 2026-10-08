@@ -14,10 +14,12 @@ import {
   SlidersHorizontal,
   TrendingUp,
   Trophy,
+  UtensilsCrossed,
   Zap,
 } from 'lucide-react';
 import { WidgetBoard, WidgetFrame, type WidgetDef } from '../components/widgets/WidgetBoard';
 import { FireWidget } from '../components/fire/FireWidget';
+import { NutritionTodayWidget } from '../components/food/NutritionWidgets';
 import { WorkoutTimeSheet } from '../components/workout/WorkoutTimeSheet';
 import { goalStatus } from '../lib/goals';
 import {
@@ -57,7 +59,17 @@ export default function WorkoutPage() {
 
 const PAGE = 10;
 
-const WORKOUT_DEFAULTS = ['quickStart', 'fire', 'thisWeek', 'routines', 'muscleMap', 'keyLifts', 'history'];
+const WORKOUT_DEFAULTS = [
+  'quickStart',
+  'fire',
+  'nutrition',
+  'thisWeek',
+  'routines',
+  'muscleMap',
+  'keyLifts',
+  'tools',
+  'history',
+];
 
 function WorkoutHome() {
   const [editing, setEditing] = useState(false);
@@ -78,6 +90,13 @@ function WorkoutHome() {
         description: 'Your training fire, goal and streak',
         icon: Flame,
         render: () => <FireWidget />,
+      },
+      {
+        id: 'nutrition',
+        title: 'Nutrition today',
+        description: 'Calories and macros left today',
+        icon: UtensilsCrossed,
+        render: () => <NutritionTodayWidget />,
       },
       {
         id: 'thisWeek',

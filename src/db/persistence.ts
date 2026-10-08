@@ -14,13 +14,26 @@ export interface Persistence {
   replace(snapshot: DataSnapshot): Promise<void>;
 }
 
-export const TABLES: TableName[] = ['exercises', 'routines', 'workouts', 'measurements'];
+export const TABLES: TableName[] = [
+  'exercises',
+  'routines',
+  'workouts',
+  'measurements',
+  'foods',
+  'foodEntries',
+  'savedMeals',
+  'water',
+];
 
 export const emptySnapshot = (): DataSnapshot => ({
   exercises: [],
   routines: [],
   workouts: [],
   measurements: [],
+  foods: [],
+  foodEntries: [],
+  savedMeals: [],
+  water: [],
 });
 
 // ---------------------------------------------------------------------------
@@ -43,15 +56,20 @@ class DexiePersistence implements Persistence {
       workouts: 'id, startedAt',
       measurements: 'id, date',
     });
+    // v2: nutrition. Existing databases upgrade in place; no data migration needed.
+    db.version(2).stores({
+      foods: 'id, barcode',
+      foodEntries: 'id, day',
+      savedMeals: 'id',
+      water: 'id',
+    });
     await db.open();
     return new DexiePersistence(db);
   }
 
   async load(): Promise<DataSnapshot> {
-    const [exercises, routines, workouts, measurements] = await Promise.all(
-      TABLES.map((t) => this.db.table(t).toArray()),
-    );
-    return { exercises, routines, workouts, measurements } as DataSnapshot;
+    const rows = await Promise.all(TABLES.map((t) => this.db.table(t).toArray()));
+    return Object.fromEntries(TABLES.map((t, i) => [t, rows[i]])) as unknown as DataSnapshot;
   }
 
   async put<T extends TableName>(table: T, rows: RowOf<T>[]) {
@@ -67,7 +85,7 @@ class DexiePersistence implements Persistence {
     await this.db.transaction('rw', tables, async () => {
       for (const t of TABLES) {
         await this.db.table(t).clear();
-        await this.db.table(t).bulkPut(snapshot[t]);
+        await this.db.table(t).bulkPut(snapshot[t] ?? []);
       }
     });
   }
@@ -135,7 +153,7 @@ class KVPersistence implements Persistence {
   }
 
   async replace(snapshot: DataSnapshot) {
-    this.cache = structuredClone(snapshot);
+    this.cache = { ...emptySnapshot(), ...structuredClone(snapshot) };
     for (const t of TABLES) this.write(t);
   }
 }

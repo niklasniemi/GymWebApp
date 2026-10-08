@@ -130,11 +130,87 @@ export interface Settings {
   name: string;
 }
 
+// ---------------------------------------------------------------------------
+// Nutrition
+// ---------------------------------------------------------------------------
+
+export const MEAL_SLOTS = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
+export type MealSlot = (typeof MEAL_SLOTS)[number];
+
+export interface Nutrients {
+  kcal: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber?: number;
+  sugar?: number;
+}
+
+export type FoodCategory =
+  'protein' | 'dairy' | 'grains' | 'fruit' | 'vegetables' | 'legumes' | 'fats' | 'snacks' | 'drinks' | 'meals';
+
+/** A food definition. Nutrients are per 100 g (or 100 ml for liquids). */
+export interface Food {
+  id: string;
+  name: string;
+  brand?: string;
+  barcode?: string;
+  per100: Nutrients;
+  /** A typical serving, e.g. { grams: 30, label: '1 slice' }. */
+  serving?: { grams: number; label: string };
+  liquid?: boolean;
+  category?: FoodCategory;
+  source: 'builtin' | 'custom' | 'off';
+  createdAt: number;
+}
+
+export type PortionUnit = 'g' | 'serving';
+
+/** One logged food. Nutrients are a snapshot, so editing a food never rewrites history. */
+export interface FoodEntry {
+  id: string;
+  /** Local calendar day, yyyy-mm-dd. */
+  day: string;
+  meal: MealSlot;
+  /** Absent for quick-add calories. */
+  foodId?: string;
+  name: string;
+  brand?: string;
+  quantity: number;
+  unit: PortionUnit;
+  /** Resolved weight in g/ml (0 for quick add). */
+  grams: number;
+  servingLabel?: string;
+  liquid?: boolean;
+  nutrients: Nutrients;
+  createdAt: number;
+}
+
+export type MealItem = Omit<FoodEntry, 'id' | 'day' | 'meal' | 'createdAt'>;
+
+/** A reusable combination of foods ("Overnight oats + coffee"). */
+export interface SavedMeal {
+  id: string;
+  name: string;
+  items: MealItem[];
+  createdAt: number;
+}
+
+/** Water drunk on a day (id = yyyy-mm-dd). */
+export interface WaterLog {
+  id: string;
+  ml: number;
+}
+
 export interface DataSnapshot {
   exercises: Exercise[];
   routines: Routine[];
   workouts: Workout[];
   measurements: BodyMeasurement[];
+  foods: Food[];
+  foodEntries: FoodEntry[];
+  savedMeals: SavedMeal[];
+  water: WaterLog[];
 }
 
 export interface BackupFile extends DataSnapshot {
@@ -144,4 +220,6 @@ export interface BackupFile extends DataSnapshot {
   settings?: Partial<Settings>;
   /** Starred exercise ids. */
   favorites?: string[];
+  /** Nutrition goals & profile. */
+  nutrition?: unknown;
 }

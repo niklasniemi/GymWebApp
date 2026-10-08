@@ -10,7 +10,8 @@ import {
   type RowOf,
 } from '../db/persistence';
 import { getHistoryIndex } from '../lib/history';
-import type { BodyMeasurement, DataSnapshot, Exercise, Routine, Workout } from '../types';
+import { BUILTIN_FOODS } from '../data/foods';
+import type { BodyMeasurement, DataSnapshot, Exercise, Food, FoodEntry, Routine, SavedMeal, Workout } from '../types';
 import { toast } from './toast';
 
 export type ImportMode = 'merge' | 'replace';
@@ -30,6 +31,13 @@ interface DataState extends DataSnapshot {
   deleteWorkout: (id: string) => void;
   saveMeasurement: (m: BodyMeasurement) => void;
   deleteMeasurement: (id: string) => void;
+  saveFood: (f: Food) => void;
+  deleteFood: (id: string) => void;
+  saveFoodEntries: (entries: FoodEntry[]) => void;
+  deleteFoodEntries: (ids: string[]) => void;
+  saveMeal: (m: SavedMeal) => void;
+  deleteMeal: (id: string) => void;
+  setWater: (day: string, ml: number) => void;
   importData: (data: DataSnapshot, mode: ImportMode) => Promise<void>;
   clearAll: () => Promise<void>;
 }
@@ -87,6 +95,10 @@ export const useData = create<DataState>()((set, get) => ({
           routines: sortRoutines(snap.routines),
           workouts: sortWorkouts(snap.workouts),
           measurements: sortMeasurements(snap.measurements),
+          foods: snap.foods ?? [],
+          foodEntries: snap.foodEntries ?? [],
+          savedMeals: snap.savedMeals ?? [],
+          water: snap.water ?? [],
           storage: db.kind,
           status: 'ready',
         });
@@ -173,17 +185,62 @@ export const useData = create<DataState>()((set, get) => ({
     remove('measurements', [id]);
   },
 
+  saveFood: (f) => {
+    set({ foods: upsert(get().foods, f) });
+    write('foods', [f]);
+  },
+
+  deleteFood: (id) => {
+    set({ foods: get().foods.filter((f) => f.id !== id) });
+    remove('foods', [id]);
+  },
+
+  saveFoodEntries: (entries) => {
+    if (!entries.length) return;
+    let list = get().foodEntries;
+    for (const e of entries) list = upsert(list, e);
+    set({ foodEntries: list });
+    write('foodEntries', entries);
+  },
+
+  deleteFoodEntries: (ids) => {
+    const drop = new Set(ids);
+    set({ foodEntries: get().foodEntries.filter((e) => !drop.has(e.id)) });
+    remove('foodEntries', ids);
+  },
+
+  saveMeal: (m) => {
+    set({ savedMeals: upsert(get().savedMeals, m) });
+    write('savedMeals', [m]);
+  },
+
+  deleteMeal: (id) => {
+    set({ savedMeals: get().savedMeals.filter((m) => m.id !== id) });
+    remove('savedMeals', [id]);
+  },
+
+  setWater: (day, ml) => {
+    const log = { id: day, ml: Math.max(0, Math.round(ml)) };
+    set({ water: upsert(get().water, log) });
+    write('water', [log]);
+  },
+
   importData: async (data, mode) => {
     const current = get();
     const custom = (list: Exercise[]) => list.filter((e) => e.custom && !builtinIds.has(e.id));
+    const incoming = { ...emptySnapshot(), ...data };
     const next: DataSnapshot =
       mode === 'replace'
-        ? { ...data, exercises: custom(data.exercises) }
+        ? { ...incoming, exercises: custom(incoming.exercises) }
         : {
-            exercises: mergeById(custom(current.exercises), custom(data.exercises)),
-            routines: mergeById(current.routines, data.routines),
-            workouts: mergeById(current.workouts, data.workouts),
-            measurements: mergeById(current.measurements, data.measurements),
+            exercises: mergeById(custom(current.exercises), custom(incoming.exercises)),
+            routines: mergeById(current.routines, incoming.routines),
+            workouts: mergeById(current.workouts, incoming.workouts),
+            measurements: mergeById(current.measurements, incoming.measurements),
+            foods: mergeById(current.foods, incoming.foods),
+            foodEntries: mergeById(current.foodEntries, incoming.foodEntries),
+            savedMeals: mergeById(current.savedMeals, incoming.savedMeals),
+            water: mergeById(current.water, incoming.water),
           };
     await db?.replace(next);
     set({
@@ -191,6 +248,10 @@ export const useData = create<DataState>()((set, get) => ({
       routines: sortRoutines(next.routines),
       workouts: sortWorkouts(next.workouts),
       measurements: sortMeasurements(next.measurements),
+      foods: next.foods,
+      foodEntries: next.foodEntries,
+      savedMeals: next.savedMeals,
+      water: next.water,
     });
   },
 
@@ -224,6 +285,29 @@ export function exerciseName(map: Map<string, Exercise>, id: string): string {
 
 /** Snapshot of user data for export (custom exercises only). */
 export function getSnapshot(): DataSnapshot {
-  const { exercises, routines, workouts, measurements } = useData.getState();
-  return { exercises: exercises.filter((e) => e.custom), routines, workouts, measurements };
+  const { exercises, routines, workouts, measurements, foods, foodEntries, savedMeals, water } = useData.getState();
+  return {
+    exercises: exercises.filter((e) => e.custom),
+    routines,
+    workouts,
+    measurements,
+    foods,
+    foodEntries,
+    savedMeals,
+    water,
+  };
 }
+
+// Foods: built-ins live in code, custom & Open Food Facts picks in the database.
+const foodMapCache = new WeakMap<Food[], Map<string, Food>>();
+
+export function getFoodMap(foods: Food[]): Map<string, Food> {
+  let map = foodMapCache.get(foods);
+  if (!map) {
+    map = new Map([...BUILTIN_FOODS, ...foods].map((f) => [f.id, f]));
+    foodMapCache.set(foods, map);
+  }
+  return map;
+}
+
+export const useFoodMap = () => useData((s) => getFoodMap(s.foods));

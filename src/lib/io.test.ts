@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { BUILTIN_EXERCISES } from '../data/exercises';
 import { DEFAULT_SETTINGS } from '../store/settings';
-import type { Exercise, Workout } from '../types';
-import { createBackup, ImportError, parseBackup, parseCSV, workoutsFromCSV, workoutsToCSV } from './io';
+import type { Exercise, FoodEntry, Workout } from '../types';
+import { createBackup, foodDiaryToCSV, ImportError, parseBackup, parseCSV, workoutsFromCSV, workoutsToCSV } from './io';
 
 const custom: Exercise = {
   id: 'custom-1',
@@ -44,6 +44,20 @@ const workout: Workout = {
       sets: [{ id: 'c', type: 'normal', weight: 30, reps: 12, rpe: null, rir: 2, completed: true }],
     },
   ],
+};
+
+const entry: FoodEntry = {
+  id: 'e1',
+  day: '2026-10-01',
+  meal: 'breakfast',
+  foodId: 'food-oats',
+  name: 'Oats, rolled',
+  quantity: 1,
+  unit: 'serving',
+  grams: 40,
+  servingLabel: '1 portion (40 g)',
+  nutrients: { kcal: 155.6, protein: 5.3, carbs: 26.5, fat: 2.8 },
+  createdAt: 1,
 };
 
 describe('parseCSV', () => {
@@ -93,11 +107,23 @@ describe('CSV round trip', () => {
 describe('JSON backup', () => {
   it('round-trips and sanitizes', () => {
     const backup = createBackup(
-      { exercises: [custom], routines: [], workouts: [workout], measurements: [] },
+      {
+        exercises: [custom],
+        routines: [],
+        workouts: [workout],
+        measurements: [],
+        foods: [],
+        foodEntries: [entry],
+        savedMeals: [{ id: 'meal1', name: 'Oats bowl', items: [entry], createdAt: 1 }],
+        water: [{ id: '2026-10-01', ml: 1500 }],
+      },
       { ...DEFAULT_SETTINGS, theme: 'dark' },
     );
     const { data, settings } = parseBackup(JSON.stringify(backup));
     expect(data.workouts[0]).toEqual(workout);
+    expect(data.foodEntries[0]).toEqual(entry);
+    expect(data.savedMeals[0].items).toHaveLength(1);
+    expect(data.water[0].ml).toBe(1500);
     expect(data.exercises[0].name).toBe(custom.name);
     expect(settings?.theme).toBe('dark');
   });
@@ -108,14 +134,38 @@ describe('JSON backup', () => {
         app: 'forge',
         workouts: [{ id: 'ok', startedAt: 1, exercises: [] }, { nope: true }, 'garbage'],
         measurements: [{ id: 'm', date: 1, values: { weight: 80, bogus: 5, bodyFat: -2 } }],
+        foodEntries: [
+          { id: 'f', day: 'yesterday', name: 'x', nutrients: { kcal: 1 } },
+          { id: 'g', day: '2026-01-01' },
+        ],
       }),
     );
     expect(data.workouts.map((w) => w.id)).toEqual(['ok']);
     expect(data.measurements[0].values).toEqual({ weight: 80 });
+    expect(data.foodEntries).toEqual([]);
   });
 
   it('rejects non-backup JSON', () => {
     expect(() => parseBackup('{"hello":1}')).toThrow(ImportError);
     expect(() => parseBackup('not json')).toThrow(ImportError);
+  });
+});
+
+describe('food diary CSV', () => {
+  it('writes one row per item with a header', () => {
+    const rows = parseCSV(foodDiaryToCSV([entry]));
+    expect(rows[0][0]).toBe('date');
+    expect(rows[1]).toEqual([
+      '2026-10-01',
+      'Breakfast',
+      'Oats, rolled',
+      '',
+      '40',
+      '1 × 1 portion (40 g)',
+      '156',
+      '5.3',
+      '26.5',
+      '2.8',
+    ]);
   });
 });

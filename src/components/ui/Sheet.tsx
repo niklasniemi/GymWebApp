@@ -15,6 +15,8 @@ export interface SheetProps {
   footer?: ReactNode;
   /** Optional element rendered left of the close button. */
   headerAction?: ReactNode;
+  /** Optional element before the title (e.g. a back button). */
+  leading?: ReactNode;
   /** Non-scrolling content under the header (search, filters). */
   toolbar?: ReactNode;
   /** 'full' for pickers/editors that need a fixed tall viewport. */
@@ -45,6 +47,7 @@ function SheetPanel({
   children,
   footer,
   headerAction,
+  leading,
   toolbar,
   size = 'auto',
   flush,
@@ -106,7 +109,8 @@ function SheetPanel({
               <div className="h-1.5 w-10 rounded-full bg-fg/20" />
             </div>
           )}
-          <div className="flex items-start gap-2 px-5 pt-2 pb-3 sm:pt-5">
+          <div className={cn('flex items-start gap-2 px-5 pt-2 pb-3 sm:pt-5', leading ? 'pl-3' : '')}>
+            {leading}
             <div className="min-w-0 flex-1 pt-1.5">
               <h2 id={titleId} className="text-lg leading-tight font-bold tracking-tight">
                 {title}

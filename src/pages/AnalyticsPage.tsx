@@ -21,11 +21,13 @@ import {
   SlidersHorizontal,
   TrendingUp,
   Trophy,
+  Utensils,
   Weight,
 } from 'lucide-react';
 import { BodyTracker } from '../components/analytics/BodyTracker';
 import { PeriodBarChart } from '../components/analytics/charts';
 import { MusclesView } from '../components/analytics/MusclesView';
+import { CaloriesTrendWidget, MacroSplitWidget } from '../components/food/NutritionWidgets';
 import { StrengthView } from '../components/analytics/StrengthView';
 import {
   GoalWeeksWidget,
@@ -113,6 +115,8 @@ const OVERVIEW_DEFAULTS = [
   'goalWeeks',
   'volume',
   'momentum',
+  'calories',
+  'macros',
   'muscleTargets',
   'improved',
   'repRanges',
@@ -151,6 +155,20 @@ function Overview({ editing, onDone, focus }: { editing: boolean; onDone: () => 
         description: 'Your training fire over 60 days',
         icon: Flame,
         render: () => <MomentumHistoryWidget />,
+      },
+      {
+        id: 'calories',
+        title: 'Calories',
+        description: '14 days of calories vs your target',
+        icon: Utensils,
+        render: () => <CaloriesTrendWidget />,
+      },
+      {
+        id: 'macros',
+        title: 'Macros',
+        description: 'Macro split and protein consistency, 7 days',
+        icon: PieChart,
+        render: () => <MacroSplitWidget />,
       },
       {
         id: 'muscleTargets',

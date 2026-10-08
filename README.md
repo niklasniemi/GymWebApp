@@ -1,6 +1,6 @@
 # Forge — Workout Tracker
 
-A mobile-first, offline-first gym tracker that runs entirely in the browser. No backend, no account — data lives on your device in IndexedDB. Installable as a PWA and deployable to GitHub Pages for free.
+A mobile-first, offline-first gym and calorie tracker that runs entirely in the browser. No backend, no account — data lives on your device in IndexedDB. Installable as a PWA and deployable to GitHub Pages for free.
 
 ## Features
 
@@ -31,7 +31,18 @@ A mobile-first, offline-first gym tracker that runs entirely in the browser. No 
 - 75+ built-in exercises, filterable by muscle group and equipment; custom exercises with primary + secondary muscles
 - **Favourite exercises** (★) — pinned to the top of pickers and the library, with a Favourites filter
 
-**Utilities**
+**Food & calories**
+
+- **Food tab** with a calorie ring (left / over), the goal − food (+ workouts) budget, and protein / carb / fat bars
+- Breakfast, lunch, dinner and snacks; swipe an item left to delete (with Undo), tap to change the amount or meal
+- **Fast logging**: recents with one-tap **+** (remembers the portion you last used), 280+ built-in foods incl. Finnish staples (ruisleipä, rahka, karjalanpiirakka…), servings or grams, quick-amount chips
+- **Barcode scanner** — camera scanning (native `BarcodeDetector`, or a self-hosted ZXing WebAssembly fallback for iPhone) with manual entry; products come from [Open Food Facts](https://world.openfoodfacts.org) and are saved for offline reuse. Unknown barcodes can be added from the label once
+- Custom foods (per 100 g or per serving), **saved meals** for one-tap logging, quick-add calories, copy a meal or whole day from yesterday
+- Water tracker (glasses of 250 ml) and a weekly calorie chart
+- **Goals** from the Mifflin-St Jeor equation: sex, age, height, activity and lose / maintain / gain rate → calories, protein (1.8–2.0 g/kg), fat, carbs and water. Uses your latest logged body weight automatically; manual override available; optionally add workout calories to the budget
+- Nutrition widgets on Workout and Profile, plus Calories (14 days vs target) and Macros (7-day split, protein consistency) in Analytics
+
+**Tools** (Profile → Tools, the Workout board, or the active workout's menu)
 
 - Plate calculator with a visual barbell (kg & lb plates, 20/15/10 kg or 45/35/15 lb bars, custom bar, toggle available plates)
 - Warm-up generator (Standard 40/60/80 %, Heavy, Quick), rounded to loadable weights — also built into each exercise and addable straight into a workout
@@ -56,7 +67,7 @@ A mobile-first, offline-first gym tracker that runs entirely in the browser. No 
 
 **Data**
 
-- JSON backup / restore (merge or replace) and CSV export / import (one row per set) for moving data between devices
+- JSON backup / restore (merge or replace, includes the food diary and nutrition goals) and CSV export / import (one row per set) for moving data between devices; food diary CSV export
 - Uses the native share sheet on phones so backups can go straight to Files, AirDrop or Drive
 - Requests persistent storage so the browser doesn't evict your data
 
@@ -76,7 +87,7 @@ npm run dev
 | `npm run dev`                 | Dev server                                     |
 | `npm run build`               | Type-check + production build into `dist/`     |
 | `npm run preview`             | Serve the production build (service worker on) |
-| `npm test`                    | Unit tests (calc, PRs, CSV/JSON, storage)      |
+| `npm test`                    | Unit tests (calc, PRs, nutrition, CSV/JSON, storage) |
 | `npm run lint`                | ESLint (incl. React Compiler rules)            |
 | `npm run format`              | Prettier                                       |
 | `npm run generate-pwa-assets` | Regenerate PWA icons from `public/favicon.svg` |
@@ -98,13 +109,17 @@ To build for a sub-path locally: `BASE_PATH=/my-repo/ npm run build`.
 src/
   types.ts              Domain model (weights stored in kg, lengths in cm)
   data/exercises.ts     Built-in exercise catalog + starter routines
+  data/foods.ts         Built-in foods (typical values per 100 g / 100 ml)
   db/persistence.ts     Storage adapter: IndexedDB → localStorage → memory fallback
   store/                Zustand stores
-    data.ts             Persisted library (exercises, routines, workouts, measurements)
+    data.ts             Persisted library (exercises, routines, workouts, measurements,
+                        foods, food diary, saved meals, water)
+    nutrition.ts        Calorie / macro goals and preferences
     workout.ts          Active workout (debounced localStorage, flushed on pagehide)
     timer.ts            Rest timer (timestamp-based, survives backgrounding)
     settings.ts, ui.ts, toast.ts, tools.ts
   lib/                  Pure logic: Epley, plates, warm-ups, PR detection, analytics,
+                        nutrition targets, Open Food Facts client,
                         CSV/JSON import-export, haptics, sound, PWA
   components/           UI primitives, workout, exercises, routines, tools, analytics
   pages/                One per tab; Analytics (and Recharts) is lazy-loaded
@@ -121,8 +136,11 @@ src/
 - Number inputs commit through a debounced handler; ticking clocks live in small leaf components.
 - Blur is never stacked: nested glass surfaces fall back to a cheaper translucent fill, and the ambient background is a static gradient.
 - Vendor code is split into long-lived chunks (react, motion, dexie); Recharts loads on demand and is prefetched at idle.
+- The calorie ring uses the same compositor-only half-arc technique; the Food tab's charts are plain CSS transforms, so it never loads Recharts. The barcode decoder (~1 MB WebAssembly) loads only when the scanner opens and is then cached for offline use.
 
 ## Credits
+
+Food data: product lookups use [Open Food Facts](https://world.openfoodfacts.org), available under the [Open Database License](https://opendatacommons.org/licenses/odbl/1-0/). Built-in foods are rounded typical values from standard food-composition tables.
 
 3D body model: [“HUMAN_BODY”](https://sketchfab.com/3d-models/human-body-f022e4a3641943328b2fbfdf0f7c3e1e) by [vistaalienprime](https://sketchfab.com/vistaalienprime5665288), licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Modified: UVs removed, geometry welded and quantised, segmented into muscle regions at runtime.
 
@@ -134,3 +152,4 @@ src/
 - **Sound** unlocks on the first tap (browser autoplay rules).
 - **Install** via the browser's install prompt (Settings → Install Forge), or on iPhone: Share → Add to Home Screen.
 - Data is per browser and per origin. Use **Settings → Data & backup** to move it between devices.
+- **Barcode scanning** needs camera permission and HTTPS (GitHub Pages is fine). Only the barcode is sent to Open Food Facts. Their free-text product search turns away anonymous browser traffic when busy, so Forge runs it only when you tap **Search products** and falls back gracefully; barcode lookups aren't affected.

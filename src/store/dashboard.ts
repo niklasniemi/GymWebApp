@@ -24,20 +24,30 @@ export const useDashboard = create<DashboardState>()(
     }),
     {
       name: 'forge:dashboard',
-      version: 2,
-      // v2 introduced the momentum fire and weekly-goal widgets — surface them in saved layouts.
+      version: 3,
+      // v2 introduced the momentum fire and weekly-goal widgets, v3 nutrition (and tools, since
+      // Utilities left the tab bar) — surface them in saved layouts.
       migrate: (persisted, version) => {
         const state = (persisted ?? { layouts: {} }) as Pick<DashboardState, 'layouts'>;
+        const insertAfter = (ids: string[] | undefined, after: string, id: string) => {
+          if (!ids || ids.includes(id)) return ids;
+          const i = ids.indexOf(after);
+          return [...ids.slice(0, i + 1), id, ...ids.slice(i + 1)];
+        };
         if (version < 2) {
-          const insertAfter = (ids: string[] | undefined, after: string, id: string) => {
-            if (!ids || ids.includes(id)) return ids;
-            const i = ids.indexOf(after);
-            return [...ids.slice(0, i + 1), id, ...ids.slice(i + 1)];
-          };
           state.layouts = {
             ...state.layouts,
             workout: insertAfter(state.layouts.workout, 'quickStart', 'fire'),
             analytics: insertAfter(insertAfter(state.layouts.analytics, 'stats', 'goalWeeks'), 'goalWeeks', 'momentum'),
+          };
+        }
+        if (version < 3) {
+          const workout = insertAfter(state.layouts.workout, 'fire', 'nutrition');
+          const withTools = workout && !workout.includes('tools') ? [...workout, 'tools'] : workout;
+          state.layouts = {
+            ...state.layouts,
+            workout: withTools,
+            analytics: insertAfter(insertAfter(state.layouts.analytics, 'momentum', 'calories'), 'calories', 'macros'),
           };
         }
         return state as DashboardState;

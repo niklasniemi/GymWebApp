@@ -1,6 +1,7 @@
 import { BUILTIN_EXERCISES } from '../data/exercises';
 import {
   EQUIPMENT,
+  MEAL_SLOTS,
   MEASUREMENT_KEYS,
   MUSCLE_GROUPS,
   SET_TYPES,
@@ -9,28 +10,41 @@ import {
   type DataSnapshot,
   type Equipment,
   type Exercise,
+  type Food,
+  type FoodEntry,
+  type MealItem,
   type MuscleGroup,
+  type Nutrients,
   type PRType,
   type Routine,
+  type SavedMeal,
   type Settings,
   type SetType,
   type Workout,
   type WorkoutExercise,
   type WorkoutSet,
+  type WaterLog,
 } from '../types';
+import { MEAL_LABELS } from './nutrition';
 import { uid } from './utils';
 
 // ---------------------------------------------------------------------------
 // JSON backup
 // ---------------------------------------------------------------------------
 
-export function createBackup(data: DataSnapshot, settings: Settings, favorites: string[] = []): BackupFile {
+export function createBackup(
+  data: DataSnapshot,
+  settings: Settings,
+  favorites: string[] = [],
+  nutrition?: unknown,
+): BackupFile {
   return {
     app: 'forge',
     version: 1,
     exportedAt: new Date().toISOString(),
     settings,
     favorites,
+    nutrition,
     ...data,
   };
 }
@@ -136,11 +150,99 @@ function cleanMeasurement(raw: unknown): BodyMeasurement | null {
   return { id: str(raw.id), date: num(raw.date) as number, values, notes: str(raw.notes) || undefined };
 }
 
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const clampNum = (v: unknown, max = 100_000) => {
+  const n = num(v);
+  return n === null || n < 0 ? 0 : Math.min(n, max);
+};
+
+function cleanNutrients(raw: unknown): Nutrients | null {
+  if (!isObj(raw) || num(raw.kcal) === null) return null;
+  const out: Nutrients = {
+    kcal: clampNum(raw.kcal),
+    protein: clampNum(raw.protein),
+    carbs: clampNum(raw.carbs),
+    fat: clampNum(raw.fat),
+  };
+  if (num(raw.fiber) !== null) out.fiber = clampNum(raw.fiber);
+  if (num(raw.sugar) !== null) out.sugar = clampNum(raw.sugar);
+  return out;
+}
+
+function cleanFood(raw: unknown): Food | null {
+  if (!isObj(raw) || !str(raw.id) || !str(raw.name)) return null;
+  const per100 = cleanNutrients(raw.per100);
+  if (!per100) return null;
+  const serving =
+    isObj(raw.serving) && (num(raw.serving.grams) ?? 0) > 0
+      ? { grams: num(raw.serving.grams) as number, label: str(raw.serving.label, 'serving').slice(0, 60) }
+      : undefined;
+  return {
+    id: str(raw.id),
+    name: str(raw.name).slice(0, 120),
+    brand: str(raw.brand).slice(0, 80) || undefined,
+    barcode: str(raw.barcode).slice(0, 32) || undefined,
+    per100,
+    serving,
+    liquid: raw.liquid === true || undefined,
+    source: raw.source === 'off' ? 'off' : 'custom',
+    createdAt: num(raw.createdAt) ?? Date.now(),
+  };
+}
+
+function cleanMealItem(raw: unknown): MealItem | null {
+  if (!isObj(raw) || !str(raw.name)) return null;
+  const nutrients = cleanNutrients(raw.nutrients);
+  if (!nutrients) return null;
+  return {
+    foodId: str(raw.foodId) || undefined,
+    name: str(raw.name).slice(0, 120),
+    brand: str(raw.brand).slice(0, 80) || undefined,
+    quantity: clampNum(raw.quantity),
+    unit: raw.unit === 'serving' ? 'serving' : 'g',
+    grams: clampNum(raw.grams),
+    servingLabel: str(raw.servingLabel).slice(0, 60) || undefined,
+    liquid: raw.liquid === true || undefined,
+    nutrients,
+  };
+}
+
+function cleanFoodEntry(raw: unknown): FoodEntry | null {
+  if (!isObj(raw) || !str(raw.id) || !DAY_RE.test(str(raw.day))) return null;
+  const item = cleanMealItem(raw);
+  if (!item) return null;
+  return {
+    ...item,
+    id: str(raw.id),
+    day: str(raw.day),
+    meal: oneOf(raw.meal, MEAL_SLOTS, 'snack'),
+    createdAt: num(raw.createdAt) ?? Date.now(),
+  };
+}
+
+function cleanSavedMeal(raw: unknown): SavedMeal | null {
+  if (!isObj(raw) || !str(raw.id) || !Array.isArray(raw.items)) return null;
+  const items = raw.items.map(cleanMealItem).filter((x): x is MealItem => x !== null);
+  if (!items.length) return null;
+  return {
+    id: str(raw.id),
+    name: str(raw.name, 'Meal').slice(0, 80),
+    items,
+    createdAt: num(raw.createdAt) ?? Date.now(),
+  };
+}
+
+function cleanWater(raw: unknown): WaterLog | null {
+  if (!isObj(raw) || !DAY_RE.test(str(raw.id))) return null;
+  return { id: str(raw.id), ml: clampNum(raw.ml, 20_000) };
+}
+
 /** Parses and sanitizes a backup file. Never trusts the input shape. */
 export function parseBackup(text: string): {
   data: DataSnapshot;
   settings?: Partial<Settings>;
   favorites?: string[];
+  nutrition?: unknown;
 } {
   let raw: unknown;
   try {
@@ -165,12 +267,24 @@ export function parseBackup(text: string): {
     measurements: arr('measurements')
       .map(cleanMeasurement)
       .filter((x): x is BodyMeasurement => x !== null),
+    foods: arr('foods')
+      .map(cleanFood)
+      .filter((x): x is Food => x !== null),
+    foodEntries: arr('foodEntries')
+      .map(cleanFoodEntry)
+      .filter((x): x is FoodEntry => x !== null),
+    savedMeals: arr('savedMeals')
+      .map(cleanSavedMeal)
+      .filter((x): x is SavedMeal => x !== null),
+    water: arr('water')
+      .map(cleanWater)
+      .filter((x): x is WaterLog => x !== null),
   };
   const settings = isObj(raw.settings) ? (raw.settings as Partial<Settings>) : undefined;
   const favorites = Array.isArray(raw.favorites)
     ? raw.favorites.filter((x): x is string => typeof x === 'string').slice(0, 1000)
     : undefined;
-  return { data, settings, favorites };
+  return { data, settings, favorites, nutrition: isObj(raw.nutrition) ? raw.nutrition : undefined };
 }
 
 // ---------------------------------------------------------------------------
@@ -366,7 +480,46 @@ export function workoutsFromCSV(text: string, existing: Exercise[]): DataSnapsho
   }
 
   if (!workouts.size) throw new ImportError('No workouts found in this CSV.');
-  return { exercises: [...created.values()], routines: [], workouts: [...workouts.values()], measurements: [] };
+  return {
+    exercises: [...created.values()],
+    routines: [],
+    workouts: [...workouts.values()],
+    measurements: [],
+    foods: [],
+    foodEntries: [],
+    savedMeals: [],
+    water: [],
+  };
+}
+
+/** Food diary as CSV: one row per logged item (export only). */
+export function foodDiaryToCSV(entries: FoodEntry[]): string {
+  const cols = ['date', 'meal', 'food', 'brand', 'amount_g', 'portion', 'kcal', 'protein_g', 'carbs_g', 'fat_g'];
+  const order = new Map(MEAL_SLOTS.map((m, i) => [m, i]));
+  const sorted = [...entries].sort(
+    (a, b) =>
+      a.day.localeCompare(b.day) || (order.get(a.meal) ?? 0) - (order.get(b.meal) ?? 0) || a.createdAt - b.createdAt,
+  );
+  const lines = [cols.join(',')];
+  for (const e of sorted) {
+    lines.push(
+      [
+        e.day,
+        MEAL_LABELS[e.meal],
+        e.name,
+        e.brand ?? '',
+        e.grams ? Math.round(e.grams) : '',
+        e.unit === 'serving' ? `${e.quantity} × ${e.servingLabel ?? 'serving'}` : '',
+        Math.round(e.nutrients.kcal),
+        Math.round(e.nutrients.protein * 10) / 10,
+        Math.round(e.nutrients.carbs * 10) / 10,
+        Math.round(e.nutrients.fat * 10) / 10,
+      ]
+        .map(csvCell)
+        .join(','),
+    );
+  }
+  return lines.join('\r\n');
 }
 
 // ---------------------------------------------------------------------------

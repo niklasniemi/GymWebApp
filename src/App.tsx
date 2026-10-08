@@ -22,10 +22,13 @@ import { useRoute, type Tab } from './store/ui';
 // prefetched once the app is idle, so the Analytics tab still opens instantly.
 const loadAnalytics = () => import('./pages/AnalyticsPage');
 const AnalyticsPage = lazy(loadAnalytics);
+const loadFood = () => import('./pages/FoodPage');
+const FoodPage = lazy(loadFood);
 
 const PAGES: Record<Tab, ComponentType> = {
   workout: WorkoutPage,
   routines: RoutinesPage,
+  food: FoodPage,
   analytics: AnalyticsPage,
   utilities: UtilitiesPage,
   profile: ProfilePage,
@@ -40,7 +43,10 @@ export function App() {
   useEffect(() => {
     void useData.getState().init();
     const idle = window.requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 1500));
-    idle(() => void loadAnalytics());
+    idle(() => {
+      void loadFood();
+      void loadAnalytics();
+    });
   }, []);
 
   useEffect(() => {
