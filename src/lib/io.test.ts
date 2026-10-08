@@ -128,6 +128,41 @@ describe('JSON backup', () => {
     expect(settings?.theme).toBe('dark');
   });
 
+  it('keeps runs and sanitizes their data', () => {
+    const { data } = parseBackup(
+      JSON.stringify({
+        app: 'forge',
+        workouts: [
+          {
+            id: 'r',
+            startedAt: 1,
+            endedAt: 1_800_001,
+            exercises: [],
+            run: { type: 'nope', distance: 5000, duration: 1800, avgHr: 900, rpe: 7 },
+          },
+        ],
+      }),
+    );
+    expect(data.workouts[0].run).toEqual({
+      type: 'outdoor',
+      distance: 5000,
+      duration: 1800,
+      elevation: undefined,
+      avgHr: undefined,
+      rpe: 7,
+    });
+  });
+
+  it('keeps activities and defaults unknown sports to other', () => {
+    const { data } = parseBackup(
+      JSON.stringify({
+        app: 'forge',
+        workouts: [{ id: 'p', startedAt: 1, exercises: [], activity: { sport: 'quidditch', duration: 3600, rpe: 5 } }],
+      }),
+    );
+    expect(data.workouts[0].activity).toMatchObject({ sport: 'other', duration: 3600, rpe: 5 });
+  });
+
   it('drops malformed records instead of failing', () => {
     const { data } = parseBackup(
       JSON.stringify({

@@ -1,7 +1,10 @@
 import { memo } from 'react';
-import { ChevronRight, Clock, Trophy, Weight } from 'lucide-react';
+import { ChevronRight, Clock, Footprints, Trophy, Weight } from 'lucide-react';
 import { formatDuration, formatRelativeDay } from '../../lib/format';
 import { topSet, workoutPRCount, workoutVolume } from '../../lib/history';
+import { formatDistance, formatPace, formatRunTime, isRun, paceSeconds, type RunWorkout } from '../../lib/running';
+import { formatActiveTime, isActivity, SPORT_INFO, type ActivityWorkout } from '../../lib/activities';
+import { SportIcon } from '../activities/SportIcon';
 import { displayWeight, formatNumber, formatVolume } from '../../lib/units';
 import { exerciseName, useExerciseMap } from '../../store/data';
 import { useSettings } from '../../store/settings';
@@ -16,6 +19,8 @@ export const WorkoutHistoryCard = memo(function WorkoutHistoryCard({
 }) {
   const exMap = useExerciseMap();
   const unit = useSettings((s) => s.unit);
+  if (isRun(workout)) return <RunHistoryCard workout={workout} onOpen={onOpen} />;
+  if (isActivity(workout)) return <ActivityHistoryCard workout={workout} onOpen={onOpen} />;
   const prs = workoutPRCount(workout);
   const shown = workout.exercises.slice(0, 4);
 
@@ -74,3 +79,61 @@ export const WorkoutHistoryCard = memo(function WorkoutHistoryCard({
     </button>
   );
 });
+
+function RunHistoryCard({ workout, onOpen }: { workout: RunWorkout; onOpen: (id: string) => void }) {
+  const unit = useSettings((s) => s.unit);
+  const r = workout.run;
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(workout.id)}
+      className="surface flex w-full items-center gap-3 rounded-2xl p-4 text-left transition-transform active:scale-[0.98] [content-visibility:auto] [contain-intrinsic-size:auto_88px]"
+    >
+      <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent-text">
+        <Footprints size={22} aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[16px] font-bold">{workout.name}</span>
+        <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-fg-2">
+          <span>{formatRelativeDay(workout.startedAt)}</span>
+          <span className="font-semibold text-fg tabular">{formatDistance(r.distance, unit)}</span>
+          <span className="inline-flex items-center gap-1 tabular">
+            <Clock size={12} aria-hidden />
+            {formatRunTime(r.duration)}
+          </span>
+          <span className="tabular">{formatPace(paceSeconds(r, unit), unit)}</span>
+        </span>
+      </span>
+      <ChevronRight size={18} className="shrink-0 text-muted" aria-hidden />
+    </button>
+  );
+}
+
+function ActivityHistoryCard({ workout, onOpen }: { workout: ActivityWorkout; onOpen: (id: string) => void }) {
+  const unit = useSettings((s) => s.unit);
+  const a = workout.activity;
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(workout.id)}
+      className="surface flex w-full items-center gap-3 rounded-2xl p-4 text-left transition-transform active:scale-[0.98] [content-visibility:auto] [contain-intrinsic-size:auto_88px]"
+    >
+      <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent-text">
+        <SportIcon sport={a.sport} size={22} aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[16px] font-bold">{workout.name}</span>
+        <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-fg-2">
+          <span>{formatRelativeDay(workout.startedAt)}</span>
+          <span className="inline-flex items-center gap-1 font-semibold text-fg tabular">
+            <Clock size={12} aria-hidden />
+            {formatActiveTime(a.duration)}
+          </span>
+          {a.distance !== undefined && <span className="tabular">{formatDistance(a.distance, unit)}</span>}
+          {workout.name !== SPORT_INFO[a.sport].label && <span>{SPORT_INFO[a.sport].label}</span>}
+        </span>
+      </span>
+      <ChevronRight size={18} className="shrink-0 text-muted" aria-hidden />
+    </button>
+  );
+}

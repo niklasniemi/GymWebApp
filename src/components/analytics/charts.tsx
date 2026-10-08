@@ -8,6 +8,7 @@ import {
   Line,
   LineChart,
   ReferenceDot,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -286,13 +287,17 @@ export const MeasuredTrendChart = memo(function MeasuredTrendChart({
   name,
   format,
   height = 240,
+  target,
 }: {
   data: { date: number; value: number; trend: number }[];
   name: string;
   format: (v: number) => string;
   height?: number;
+  /** Optional goal value drawn as a dashed reference line. */
+  target?: number;
 }) {
   const values = data.flatMap((d) => [d.value, d.trend]);
+  if (target !== undefined) values.push(target);
   const ticks = niceRangeTicks(Math.min(...values), Math.max(...values));
   return (
     <ChartFrame
@@ -306,6 +311,11 @@ export const MeasuredTrendChart = memo(function MeasuredTrendChart({
           <span className="flex items-center gap-1.5">
             <span className="h-0.5 w-3 rounded-full bg-[var(--chart-2)]" /> Trend
           </span>
+          {target !== undefined && (
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 border-t border-dashed border-[var(--success)]" /> Target
+            </span>
+          )}
         </div>
       }
       table={
@@ -353,6 +363,15 @@ export const MeasuredTrendChart = memo(function MeasuredTrendChart({
             activeDot={{ r: 6, fill: 'var(--chart-1)', stroke: 'var(--surface)', strokeWidth: 2 }}
             isAnimationActive={false}
           />
+          {target !== undefined && (
+            <ReferenceLine
+              y={target}
+              stroke="var(--success)"
+              strokeDasharray="5 4"
+              strokeWidth={1.5}
+              ifOverflow="extendDomain"
+            />
+          )}
           <Line
             type="monotone"
             dataKey="trend"

@@ -13,6 +13,8 @@ import {
 } from '../../lib/units';
 import { cn, parseNumber, round, uid } from '../../lib/utils';
 import { useData } from '../../store/data';
+import { useNutrition } from '../../store/nutrition';
+import { WeightGoalWidget } from '../widgets/WeightGoalWidget';
 import { useSettings } from '../../store/settings';
 import { toast } from '../../store/toast';
 import { confirm } from '../../store/ui';
@@ -41,6 +43,7 @@ export function BodyTracker() {
   const unit = useSettings((s) => s.unit);
   const [metric, setMetric] = useState<MeasurementKey>('weight');
   const [editing, setEditing] = useState<BodyMeasurement | 'new' | null>(null);
+  const targetKg = useNutrition((s) => s.weightGoal?.targetKg);
 
   const available = useMemo(
     () => MEASUREMENT_KEYS.filter((k) => entries.some((e) => typeof e.values[k] === 'number')),
@@ -76,6 +79,8 @@ export function BodyTracker() {
         Log measurements
       </Button>
 
+      <WeightGoalWidget />
+
       {entries.length === 0 ? (
         <Card>
           <EmptyState icon={Scale} title="Track your body" className="py-6">
@@ -99,7 +104,12 @@ export function BodyTracker() {
             </div>
             <Card>
               {series.length >= 2 ? (
-                <MeasuredTrendChart data={series} name={MEASUREMENT_LABELS[metric]} format={fmt} />
+                <MeasuredTrendChart
+                  data={series}
+                  name={MEASUREMENT_LABELS[metric]}
+                  format={fmt}
+                  target={metric === 'weight' ? targetKg : undefined}
+                />
               ) : (
                 <EmptyState icon={Ruler} title="One more entry needed" className="py-6">
                   Log {MEASUREMENT_LABELS[metric].toLowerCase()} at least twice to draw a trend.

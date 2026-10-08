@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { ACTIVITY_LEVELS, computeTargets, type NutritionProfile, type Targets } from '../lib/nutrition';
+import { weightGoalStatus, weightTrend, type WeightGoal, type WeightGoalStatus } from '../lib/weightGoal';
 import { useData } from './data';
 import { safeLocalStorage } from './storage';
 
@@ -16,6 +17,8 @@ export interface NutritionPrefs {
   addExercise: boolean;
   /** Search Open Food Facts (online) in addition to the built-in foods. */
   onlineSearch: boolean;
+  /** Target body weight (with the starting point for progress), or null. */
+  weightGoal: WeightGoal | null;
 }
 
 const DEFAULT_PROFILE: NutritionProfile = {
@@ -35,6 +38,7 @@ export const DEFAULT_NUTRITION: NutritionPrefs = {
   manual: computeTargets(DEFAULT_PROFILE, DEFAULT_PROFILE.weightKg),
   addExercise: false,
   onlineSearch: true,
+  weightGoal: null,
 };
 
 interface NutritionState extends NutritionPrefs {
@@ -79,6 +83,21 @@ export function useTargets(): Targets & { weightKg: number; fromMeasurement: boo
   }, [profile, auto, manual, measured]);
 }
 
+/** Progress toward the target weight and the projected date, or null when no goal is set. */
+export function useWeightGoal(): WeightGoalStatus | null {
+  const goal = useNutrition((s) => s.weightGoal);
+  const profile = useNutrition((s) => s.profile);
+  const measurements = useData((s) => s.measurements);
+  const measured = useLatestWeight();
+  const [now] = useState(() => Date.now());
+  return useMemo(() => {
+    if (!goal) return null;
+    const current = measured ?? profile.weightKg;
+    const rate = profile.goal === 'maintain' ? 0 : profile.rate;
+    return weightGoalStatus(goal, current, rate, weightTrend(measurements, now), now);
+  }, [goal, profile, measurements, measured, now]);
+}
+
 /** Validates nutrition prefs from an imported backup. */
 export function sanitizeNutrition(raw: unknown): Partial<NutritionPrefs> | null {
   if (!raw || typeof raw !== 'object') return null;
@@ -89,6 +108,16 @@ export function sanitizeNutrition(raw: unknown): Partial<NutritionPrefs> | null 
   if (typeof r.auto === 'boolean') out.auto = r.auto;
   if (typeof r.addExercise === 'boolean') out.addExercise = r.addExercise;
   if (typeof r.onlineSearch === 'boolean') out.onlineSearch = r.onlineSearch;
+  const wg = r.weightGoal as Record<string, unknown> | null | undefined;
+  if (wg === null) out.weightGoal = null;
+  else if (wg && typeof wg === 'object') {
+    const targetKg = n(wg.targetKg, 25, 350);
+    const startKg = n(wg.startKg, 25, 350);
+    const startedAt = n(wg.startedAt, 0, 8.64e15);
+    if (targetKg !== undefined && startKg !== undefined && startedAt !== undefined) {
+      out.weightGoal = { targetKg, startKg, startedAt };
+    }
+  }
   const p = r.profile as Record<string, unknown> | undefined;
   if (p && typeof p === 'object') {
     out.profile = {

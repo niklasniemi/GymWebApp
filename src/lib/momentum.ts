@@ -1,4 +1,4 @@
-import type { Workout } from '../types';
+import type { ActivityData, RunData, Workout } from '../types';
 import { addDays, startOfDay } from './format';
 import { workoutSetCount, workoutVolume } from './history';
 
@@ -31,9 +31,37 @@ const median = (xs: number[]) => {
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 };
 
-/** Effort multiplier (0.6–1.5) of a session relative to the previous ones. */
+const DEFAULT_RUN_MINUTES = 35;
+
+/** Runs are compared with your earlier runs: time on feet and distance. */
+function runEffort(run: RunData, previous: Workout[]): number {
+  const recent = previous.filter((w) => w.run).slice(-BASELINE_SESSIONS);
+  const minutes = run.duration / 60;
+  const medMinutes = recent.length >= 3 ? median(recent.map((w) => w.run!.duration / 60)) : DEFAULT_RUN_MINUTES;
+  const medDistance = recent.length >= 3 ? median(recent.map((w) => w.run!.distance)) : 0;
+  const timeRatio = medMinutes > 0 ? minutes / medMinutes : 1;
+  const relative = medDistance > 0 ? 0.5 * timeRatio + 0.5 * (run.distance / medDistance) : timeRatio;
+  // Hard efforts (RPE 8+) burn a little brighter than easy jogs.
+  const intensity = run.rpe ? 0.85 + (run.rpe / 10) * 0.3 : 1;
+  return Math.min(1.5, Math.max(0.6, (0.55 + 0.45 * relative) * intensity));
+}
+
+const DEFAULT_ACTIVITY_MINUTES = 60;
+
+/** Sports are compared with earlier sessions of the same sport, by time and effort. */
+function activityEffort(a: ActivityData, previous: Workout[]): number {
+  const recent = previous.filter((w) => w.activity?.sport === a.sport).slice(-BASELINE_SESSIONS);
+  const med = recent.length >= 3 ? median(recent.map((w) => w.activity!.duration / 60)) : DEFAULT_ACTIVITY_MINUTES;
+  const relative = med > 0 ? a.duration / 60 / med : 1;
+  const intensity = a.rpe ? 0.85 + (a.rpe / 10) * 0.3 : 1;
+  return Math.min(1.5, Math.max(0.6, (0.55 + 0.45 * relative) * intensity));
+}
+
+/** Effort multiplier (0.6–1.5) of a session relative to the previous ones of the same kind. */
 export function effortFactor(workout: Workout, previous: Workout[]): number {
-  const recent = previous.slice(-BASELINE_SESSIONS);
+  if (workout.run) return runEffort(workout.run, previous);
+  if (workout.activity) return activityEffort(workout.activity, previous);
+  const recent = previous.filter((w) => !w.run && !w.activity).slice(-BASELINE_SESSIONS);
   const sets = workoutSetCount(workout);
   const volume = workoutVolume(workout);
   const medSets = recent.length >= 3 ? median(recent.map(workoutSetCount)) : DEFAULT_SETS;
@@ -63,7 +91,7 @@ export function fuelEvents(workouts: Workout[], goal: number): FuelEvent[] {
   const base = fuelPerWorkout(goal);
   const events = finished.map((w, i) => ({
     at: w.endedAt ?? w.startedAt,
-    fuel: base * effortFactor(w, finished.slice(Math.max(0, i - BASELINE_SESSIONS), i)),
+    fuel: base * effortFactor(w, finished.slice(Math.max(0, i - BASELINE_SESSIONS * 4), i)),
   }));
   byGoal.set(goal, events);
   return events;

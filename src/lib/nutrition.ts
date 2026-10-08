@@ -1,5 +1,7 @@
 import type { Food, FoodEntry, MealItem, MealSlot, Nutrients, PortionUnit, Workout } from '../types';
 import { addDays, fromDateInput, toDateInput } from './format';
+import { activityCalories } from './activities';
+import { runCalories } from './running';
 import { round } from './utils';
 
 // ---------------------------------------------------------------------------
@@ -248,8 +250,10 @@ export function computeTargets(p: NutritionProfile, weightKg: number): Targets {
 /** MET for vigorous resistance training (Compendium of Physical Activities). */
 const STRENGTH_MET = 5;
 
-/** Estimated kcal burned by a workout: MET × body weight × hours (net of resting). */
+/** Estimated kcal burned by a workout: MET × body weight × hours (net of resting); runs by distance. */
 export function workoutCalories(w: Workout, weightKg: number): number {
+  if (w.run) return runCalories(w.run, weightKg);
+  if (w.activity) return activityCalories(w.activity, weightKg);
   const hours = Math.max(0, ((w.endedAt ?? w.startedAt) - w.startedAt) / 3_600_000);
   return Math.round((STRENGTH_MET - 1) * weightKg * Math.min(hours, 3));
 }

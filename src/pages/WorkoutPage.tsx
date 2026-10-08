@@ -1,11 +1,14 @@
 import { useMemo, useState } from 'react';
 import {
+  Activity,
   Calculator,
   CalendarDays,
   Check,
   ClipboardList,
   Dumbbell,
   Flame,
+  Footprints,
+  Goal,
   Grid3x3,
   History,
   PersonStanding,
@@ -20,6 +23,10 @@ import {
 import { WidgetBoard, WidgetFrame, type WidgetDef } from '../components/widgets/WidgetBoard';
 import { FireWidget } from '../components/fire/FireWidget';
 import { NutritionTodayWidget } from '../components/food/NutritionWidgets';
+import { RunningWidget } from '../components/running/RunningWidget';
+import { ActivitySheet } from '../components/activities/ActivitySheet';
+import { ActivitiesWidget } from '../components/activities/ActivitiesWidget';
+import { WeightGoalWidget } from '../components/widgets/WeightGoalWidget';
 import { WorkoutTimeSheet } from '../components/workout/WorkoutTimeSheet';
 import { goalStatus } from '../lib/goals';
 import {
@@ -97,6 +104,27 @@ function WorkoutHome() {
         description: 'Calories and macros left today',
         icon: UtensilsCrossed,
         render: () => <NutritionTodayWidget />,
+      },
+      {
+        id: 'running',
+        title: 'Running',
+        description: 'Weekly distance, pace and running records',
+        icon: Footprints,
+        render: () => <RunningWidget />,
+      },
+      {
+        id: 'activities',
+        title: 'Activities',
+        description: 'Tennis, padel and other sports — time per sport',
+        icon: Activity,
+        render: () => <ActivitiesWidget />,
+      },
+      {
+        id: 'weightGoal',
+        title: 'Weight goal',
+        description: 'Progress and time to your target weight',
+        icon: Goal,
+        render: () => <WeightGoalWidget />,
       },
       {
         id: 'thisWeek',
@@ -189,6 +217,7 @@ function WorkoutHome() {
 
 function QuickStartWidget() {
   const [logging, setLogging] = useState(false);
+  const [running, setRunning] = useState(false);
   const routines = useData((s) => s.routines);
   const [now] = useState(() => Date.now());
   return (
@@ -200,7 +229,9 @@ function QuickStartWidget() {
         <Button size="lg" icon={History} onClick={() => setLogging(true)} aria-label="Log a past workout">
           Log past
         </Button>
+        <Button size="lg" icon={Activity} onClick={() => setRunning(true)} aria-label="Log an activity or run" />
       </div>
+      <ActivitySheet open={running} onClose={() => setRunning(false)} />
       <WorkoutTimeSheet
         open={logging}
         onClose={() => setLogging(false)}

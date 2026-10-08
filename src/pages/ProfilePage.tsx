@@ -4,6 +4,7 @@ import { Flame } from '../components/fire/Flame';
 import { Button } from '../components/ui/Button';
 import { Card, PageHeader, StatTile } from '../components/ui/primitives';
 import { NutritionTodayWidget } from '../components/food/NutritionWidgets';
+import { WeightGoalWidget } from '../components/widgets/WeightGoalWidget';
 import { FrequencyWidget, MuscleMapWidget, ToolsWidget } from '../components/widgets/sharedWidgets';
 import { WidgetFrame } from '../components/widgets/WidgetBoard';
 import { useMomentum } from '../hooks/useMomentum';
@@ -49,6 +50,7 @@ function Profile() {
       <IdentityCard />
       <LifetimeStats />
       <NutritionTodayWidget />
+      <WeightGoalWidget />
       <FrequencyWidget />
       <WeekMuscles />
       <ToolsWidget />

@@ -18,6 +18,8 @@ import {
   toDisplayWeight,
 } from '../../lib/units';
 import { cn, round } from '../../lib/utils';
+import { formatDate } from '../../lib/format';
+import { formatWeeks, weightGoalStatus, type WeightGoal } from '../../lib/weightGoal';
 import { useNutrition, useLatestWeight, type NutritionPrefs } from '../../store/nutrition';
 import { useSettings } from '../../store/settings';
 import { toast } from '../../store/toast';
@@ -47,10 +49,13 @@ type Draft = Omit<NutritionPrefs, 'configured'>;
 function GoalsForm({ onDone }: { onDone: () => void }) {
   const unit = useSettings((s) => s.unit);
   const measured = useLatestWeight();
-  const [draft, setDraft] = useState<Draft>(() => {
+  const [draft, setDraft] = useState<Omit<Draft, 'weightGoal'>>(() => {
     const { profile, auto, manual, addExercise, onlineSearch } = useNutrition.getState();
     return { profile, auto, manual, addExercise, onlineSearch };
   });
+  const [existingGoal] = useState(() => useNutrition.getState().weightGoal);
+  const [target, setTarget] = useState<number | null>(() => existingGoal?.targetKg ?? null);
+  const [now] = useState(() => Date.now());
   const p = draft.profile;
   const weightKg = measured ?? p.weightKg;
   const computed = computeTargets(p, weightKg);
@@ -63,8 +68,27 @@ function GoalsForm({ onDone }: { onDone: () => void }) {
   const rates = unit === 'kg' ? [0.25, 0.5, 0.75, 1] : [0.5, 1, 1.5, 2].map((lb) => round(lb * KG_PER_LB, 3));
   const rateLabel = (kg: number) => (unit === 'kg' ? `${kg} kg` : `${formatNumber(kg / KG_PER_LB, 1)} lb`);
 
+  const goalOn = p.goal !== 'maintain' && target !== null;
+  const wrongSide = goalOn && ((p.goal === 'lose' && target >= weightKg) || (p.goal === 'gain' && target <= weightKg));
+  const preview = goalOn
+    ? weightGoalStatus({ targetKg: target, startKg: weightKg, startedAt: now }, weightKg, p.rate, null, now)
+    : null;
+
+  /** Moving the target to the other side of your weight flips lose ↔ gain. */
+  const changeTarget = (kg: number) => {
+    setTarget(kg);
+    if (kg < weightKg && p.goal === 'gain') setProfile({ goal: 'lose' });
+    if (kg > weightKg && p.goal === 'lose') setProfile({ goal: 'gain' });
+  };
+
   const save = () => {
-    useNutrition.getState().update({ ...draft, configured: true });
+    const weightGoal: WeightGoal | null =
+      !goalOn || wrongSide
+        ? null
+        : existingGoal && Math.abs(existingGoal.targetKg - target) < 0.01
+          ? existingGoal
+          : { targetKg: target, startKg: weightKg, startedAt: now };
+    useNutrition.getState().update({ ...draft, weightGoal, configured: true });
     toast.success('Goals saved');
     onDone();
   };
@@ -185,6 +209,55 @@ function GoalsForm({ onDone }: { onDone: () => void }) {
         )}
         {p.goal === 'gain' && p.rate > 0.5 && (
           <p className="px-1 text-xs text-muted">Slower gains (≈0.25 kg/week) keep fat gain lower for most lifters.</p>
+        )}
+        {p.goal !== 'maintain' && (
+          <div className="surface space-y-3 rounded-2xl px-4 py-1">
+            <SwitchRow
+              checked={target !== null}
+              onChange={(on) =>
+                setTarget(
+                  on ? round(weightKg + (p.goal === 'lose' ? -5 : 5) * (unit === 'kg' ? 1 : KG_PER_LB * 2), 1) : null,
+                )
+              }
+              label="Target weight"
+              description="See how far you have to go and when you'll get there"
+            />
+            {target !== null && (
+              <div className="space-y-2.5 pb-3">
+                <Stepper
+                  value={round(toDisplayWeight(target, unit), 1)}
+                  onChange={(v) => v !== null && changeTarget(round(fromDisplayWeight(v, unit), 2))}
+                  step={unit === 'kg' ? 0.5 : 1}
+                  min={unit === 'kg' ? 30 : 66}
+                  max={unit === 'kg' ? 300 : 660}
+                  decimals={1}
+                  label={`Target weight in ${unit}`}
+                />
+                {wrongSide ? (
+                  <p className="px-1 text-sm text-danger">
+                    That's not {p.goal === 'lose' ? 'below' : 'above'} your current weight (
+                    {formatNumber(toDisplayWeight(weightKg, unit), 1)} {unit}).
+                  </p>
+                ) : (
+                  preview && (
+                    <p className="px-1 text-sm text-fg-2">
+                      <span className="font-semibold text-fg tabular">
+                        {formatNumber(toDisplayWeight(preview.remainingKg, unit), 1)} {unit}
+                      </span>{' '}
+                      to {p.goal === 'lose' ? 'lose' : 'gain'}
+                      {preview.plannedWeeks !== null && preview.plannedDate !== null && (
+                        <>
+                          {' '}
+                          · {formatWeeks(preview.plannedWeeks)} at {rateLabel(p.rate)}/week, around{' '}
+                          <span className="font-semibold text-fg">{formatDate(preview.plannedDate)}</span>
+                        </>
+                      )}
+                    </p>
+                  )
+                )}
+              </div>
+            )}
+          </div>
         )}
       </section>
 

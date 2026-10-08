@@ -16,6 +16,10 @@ import { Sheet } from '../ui/Sheet';
 import { startWorkout } from './actions';
 import { WorkoutBreakdown } from './WorkoutBreakdown';
 import { WorkoutTimeSheet } from './WorkoutTimeSheet';
+import { RunDetailSheet } from '../running/RunDetailSheet';
+import { isRun } from '../../lib/running';
+import { isActivity } from '../../lib/activities';
+import { ActivityDetailSheet } from '../activities/ActivityDetailSheet';
 import { Flame } from '../fire/Flame';
 import { clampLevel, fireStage, fuelEvents, momentumAt } from '../../lib/momentum';
 
@@ -128,8 +132,20 @@ export function WorkoutSummarySheet({ workout, onClose }: { workout: Workout | n
   );
 }
 
-/** Past workout details with repeat / save / delete. */
+/** Past workout or run details (runs get their own sheet). */
 export function WorkoutDetailSheet({ workout, onClose }: { workout: Workout | null; onClose: () => void }) {
+  // Remember the kind so the right sheet plays its exit animation after `workout` clears.
+  const kindOf = (w: Workout) => (isRun(w) ? 'run' : isActivity(w) ? 'activity' : 'strength');
+  const [kind, setKind] = useState<'run' | 'activity' | 'strength'>('strength');
+  if (workout && kindOf(workout) !== kind) setKind(kindOf(workout));
+  if (kind === 'run') return <RunDetailSheet workout={workout && isRun(workout) ? workout : null} onClose={onClose} />;
+  if (kind === 'activity')
+    return <ActivityDetailSheet workout={workout && isActivity(workout) ? workout : null} onClose={onClose} />;
+  return <StrengthDetailSheet workout={workout} onClose={onClose} />;
+}
+
+/** Past strength workout details with repeat / save / delete. */
+function StrengthDetailSheet({ workout, onClose }: { workout: Workout | null; onClose: () => void }) {
   const deleteWorkout = useData((s) => s.deleteWorkout);
   const saveWorkout = useData((s) => s.saveWorkout);
   const [editing, setEditing] = useState(false);

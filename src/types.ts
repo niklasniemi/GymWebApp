@@ -52,6 +52,62 @@ export interface WorkoutExercise {
   notes?: string;
 }
 
+export const RUN_TYPES = ['outdoor', 'treadmill', 'trail'] as const;
+export type RunType = (typeof RUN_TYPES)[number];
+
+/** A run logged after the fact (no live tracking). Stored on a Workout with no exercises. */
+export interface RunData {
+  type: RunType;
+  /** Metres. */
+  distance: number;
+  /** Moving time in seconds. */
+  duration: number;
+  /** Elevation gain in metres. */
+  elevation?: number;
+  /** Average heart rate (bpm). */
+  avgHr?: number;
+  /** Perceived effort 1–10. */
+  rpe?: number;
+}
+
+export const SPORTS = [
+  'tennis',
+  'padel',
+  'badminton',
+  'squash',
+  'tableTennis',
+  'football',
+  'basketball',
+  'floorball',
+  'iceHockey',
+  'volleyball',
+  'golf',
+  'cycling',
+  'swimming',
+  'walking',
+  'hiking',
+  'skiing',
+  'rowing',
+  'climbing',
+  'martialArts',
+  'yoga',
+  'dance',
+  'other',
+] as const;
+export type Sport = (typeof SPORTS)[number];
+
+/** A sport or activity session logged afterwards (tennis, padel, cycling…). */
+export interface ActivityData {
+  sport: Sport;
+  /** Seconds. */
+  duration: number;
+  /** Metres, for distance sports (cycling, swimming, walking…). */
+  distance?: number;
+  avgHr?: number;
+  /** Perceived effort 1–10. */
+  rpe?: number;
+}
+
 export interface Workout {
   id: string;
   name: string;
@@ -65,6 +121,10 @@ export interface Workout {
   plannedEnd?: number;
   exercises: WorkoutExercise[];
   notes?: string;
+  /** Present for runs; strength workouts leave it undefined. */
+  run?: RunData;
+  /** Present for other sports and activities. */
+  activity?: ActivityData;
 }
 
 export interface RoutineExercise {

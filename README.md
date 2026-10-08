@@ -20,6 +20,9 @@ A mobile-first, offline-first gym and calorie tracker that runs entirely in the 
 - Swipe a set left to reveal **Delete** (long swipe deletes instantly, with Undo)
 - **Log a past workout** you forgot to start at the gym (pick date and times; previous values and PRs compare only against earlier sessions)
 - Edit the start time of a running workout, and the name/date/times of finished ones
+- **Log runs** afterwards (no live tracking): outdoor / treadmill / trail, distance, time, effort, elevation, heart rate and notes — with live pace, speed and calorie estimate. Runs count toward your weekly goal, streak and fire (effort is compared with your earlier runs), and show in history
+- **Other sports & activities** logged afterwards — tennis, padel, badminton, squash, football, floorball, ice hockey, cycling, swimming, hiking, cross-country skiing, climbing, yoga and more: duration, effort, optional distance and heart rate. Energy from MET values (Compendium of Physical Activities), and they count toward the weekly goal, streak and fire; an Activities widget shows time per sport
+- **Running records**: longest run, fastest pace and estimated best 5K / 10K / half (Riegel), weekly distance chart; km or miles follow your unit setting
 - In-progress workout survives refreshes, tab closes and app switches
 - Screen wake lock during workouts
 
@@ -39,6 +42,7 @@ A mobile-first, offline-first gym and calorie tracker that runs entirely in the 
 - **Barcode scanner** — camera scanning (native `BarcodeDetector`, or a self-hosted ZXing WebAssembly fallback for iPhone) with manual entry; products come from [Open Food Facts](https://world.openfoodfacts.org) and are saved for offline reuse. Unknown barcodes can be added from the label once
 - Custom foods (per 100 g or per serving), **saved meals** for one-tap logging, quick-add calories, copy a meal or whole day from yesterday
 - Water tracker (glasses of 250 ml) and a weekly calorie chart
+- **Target weight**: progress from your starting weight, what's left, and when you'll get there — both at your planned weekly rate and at your actual weigh-in trend (least-squares over the last 4 weeks). Shown on Food, Profile, Analytics → Body (with a target line on the weight chart) and as a widget
 - **Goals** from the Mifflin-St Jeor equation: sex, age, height, activity and lose / maintain / gain rate → calories, protein (1.8–2.0 g/kg), fat, carbs and water. Uses your latest logged body weight automatically; manual override available; optionally add workout calories to the budget
 - Nutrition widgets on Workout and Profile, plus Calories (14 days vs target) and Macros (7-day split, protein consistency) in Analytics
 

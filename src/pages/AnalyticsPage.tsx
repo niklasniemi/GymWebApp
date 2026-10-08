@@ -1,8 +1,11 @@
 import { memo, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
+  Activity,
   Crosshair,
   Flame,
+  Footprints,
+  Goal,
   Medal,
   Mountain,
   PieChart,
@@ -28,6 +31,9 @@ import { BodyTracker } from '../components/analytics/BodyTracker';
 import { PeriodBarChart } from '../components/analytics/charts';
 import { MusclesView } from '../components/analytics/MusclesView';
 import { CaloriesTrendWidget, MacroSplitWidget } from '../components/food/NutritionWidgets';
+import { RunningWidget } from '../components/running/RunningWidget';
+import { ActivitiesWidget } from '../components/activities/ActivitiesWidget';
+import { WeightGoalWidget } from '../components/widgets/WeightGoalWidget';
 import { StrengthView } from '../components/analytics/StrengthView';
 import {
   GoalWeeksWidget,
@@ -115,8 +121,11 @@ const OVERVIEW_DEFAULTS = [
   'goalWeeks',
   'volume',
   'momentum',
+  'running',
+  'activities',
   'calories',
   'macros',
+  'weightGoal',
   'muscleTargets',
   'improved',
   'repRanges',
@@ -155,6 +164,27 @@ function Overview({ editing, onDone, focus }: { editing: boolean; onDone: () => 
         description: 'Your training fire over 60 days',
         icon: Flame,
         render: () => <MomentumHistoryWidget />,
+      },
+      {
+        id: 'running',
+        title: 'Running',
+        description: 'Weekly distance, pace and running records',
+        icon: Footprints,
+        render: () => <RunningWidget />,
+      },
+      {
+        id: 'activities',
+        title: 'Activities',
+        description: 'Tennis, padel and other sports — time per sport',
+        icon: Activity,
+        render: () => <ActivitiesWidget />,
+      },
+      {
+        id: 'weightGoal',
+        title: 'Weight goal',
+        description: 'Progress and time to your target weight',
+        icon: Goal,
+        render: () => <WeightGoalWidget />,
       },
       {
         id: 'calories',

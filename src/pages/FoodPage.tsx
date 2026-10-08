@@ -26,6 +26,7 @@ import { EntrySheet, SaveMealSheet } from '../components/food/EntrySheet';
 import { GoalsSheet } from '../components/food/GoalsSheet';
 import { CalorieBars, CalorieSummary } from '../components/food/NutritionWidgets';
 import { Button } from '../components/ui/Button';
+import { WeightGoalWidget } from '../components/widgets/WeightGoalWidget';
 import { ActionList, Card, PageHeader, SectionTitle } from '../components/ui/primitives';
 import { Sheet } from '../components/ui/Sheet';
 import { SwipeToDelete } from '../components/ui/SwipeToDelete';
@@ -206,6 +207,8 @@ export default function FoodPage() {
       </div>
 
       <WaterCard day={day} ml={data.waterMl} target={data.targets.waterMl} />
+
+      <WeightGoalWidget hideWhenUnset />
 
       <WeekCard day={day} today={today} target={data.targets.kcal} onSelect={setDay} />
 

@@ -24,14 +24,15 @@ export const useDashboard = create<DashboardState>()(
     }),
     {
       name: 'forge:dashboard',
-      version: 3,
+      version: 5,
       // v2 introduced the momentum fire and weekly-goal widgets, v3 nutrition (and tools, since
-      // Utilities left the tab bar) — surface them in saved layouts.
+      // Utilities left the tab bar), v4 running and weight goal, v5 activities — surface them in saved layouts.
       migrate: (persisted, version) => {
         const state = (persisted ?? { layouts: {} }) as Pick<DashboardState, 'layouts'>;
         const insertAfter = (ids: string[] | undefined, after: string, id: string) => {
           if (!ids || ids.includes(id)) return ids;
           const i = ids.indexOf(after);
+          if (i < 0) return [...ids, id];
           return [...ids.slice(0, i + 1), id, ...ids.slice(i + 1)];
         };
         if (version < 2) {
@@ -48,6 +49,18 @@ export const useDashboard = create<DashboardState>()(
             ...state.layouts,
             workout: withTools,
             analytics: insertAfter(insertAfter(state.layouts.analytics, 'momentum', 'calories'), 'calories', 'macros'),
+          };
+        }
+        if (version < 4) {
+          state.layouts = {
+            ...state.layouts,
+            analytics: insertAfter(insertAfter(state.layouts.analytics, 'macros', 'weightGoal'), 'momentum', 'running'),
+          };
+        }
+        if (version < 5) {
+          state.layouts = {
+            ...state.layouts,
+            analytics: insertAfter(state.layouts.analytics, 'running', 'activities'),
           };
         }
         return state as DashboardState;

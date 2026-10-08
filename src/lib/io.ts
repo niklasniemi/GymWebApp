@@ -4,7 +4,10 @@ import {
   MEAL_SLOTS,
   MEASUREMENT_KEYS,
   MUSCLE_GROUPS,
+  RUN_TYPES,
   SET_TYPES,
+  SPORTS,
+  type ActivityData,
   type BackupFile,
   type BodyMeasurement,
   type DataSnapshot,
@@ -17,6 +20,7 @@ import {
   type Nutrients,
   type PRType,
   type Routine,
+  type RunData,
   type SavedMeal,
   type Settings,
   type SetType,
@@ -97,6 +101,44 @@ function cleanWorkout(raw: unknown): Workout | null {
     endedAt: num(raw.endedAt) ?? startedAt,
     exercises,
     notes: str(raw.notes) || undefined,
+    run: cleanRun(raw.run),
+    activity: cleanActivity(raw.activity),
+  };
+}
+
+function cleanActivity(raw: unknown): ActivityData | undefined {
+  if (!isObj(raw)) return undefined;
+  const duration = num(raw.duration);
+  if (duration === null || duration < 0) return undefined;
+  const opt = (v: unknown, max: number) => {
+    const n = num(v);
+    return n !== null && n >= 0 && n <= max ? n : undefined;
+  };
+  return {
+    sport: oneOf(raw.sport, SPORTS, 'other'),
+    duration: Math.min(duration, 2 * 86_400),
+    distance: opt(raw.distance, 1_000_000),
+    avgHr: opt(raw.avgHr, 250),
+    rpe: opt(raw.rpe, 10),
+  };
+}
+
+function cleanRun(raw: unknown): RunData | undefined {
+  if (!isObj(raw)) return undefined;
+  const distance = num(raw.distance);
+  const duration = num(raw.duration);
+  if (distance === null || duration === null || distance < 0 || duration < 0) return undefined;
+  const opt = (v: unknown, max: number) => {
+    const n = num(v);
+    return n !== null && n >= 0 && n <= max ? n : undefined;
+  };
+  return {
+    type: oneOf(raw.type, RUN_TYPES, 'outdoor'),
+    distance: Math.min(distance, 1_000_000),
+    duration: Math.min(duration, 7 * 86_400),
+    elevation: opt(raw.elevation, 20_000),
+    avgHr: opt(raw.avgHr, 250),
+    rpe: opt(raw.rpe, 10),
   };
 }
 
